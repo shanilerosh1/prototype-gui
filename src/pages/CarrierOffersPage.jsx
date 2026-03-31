@@ -296,7 +296,7 @@ export default function CarrierOffersPage({ config, onCompleteAFP, onGoToEffecti
               <div style={{
                 background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12,
                 boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
-                padding: '64px 48px', textAlign: 'center', maxWidth: 420, minHeight: 320,
+                padding: '40px 48px', textAlign: 'center', maxWidth: 580, minHeight: 240,
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16,
               }}>
                 <ReloadOutlined style={{ fontSize: 36, color: '#1a56db' }} />
