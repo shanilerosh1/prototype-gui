@@ -200,13 +200,13 @@ export default function CarrierOffersPage({ config, onCompleteAFP, onGoToEffecti
             display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
           }}>
             <Text style={{ fontSize: 13, color: '#374151' }}>
-              No active renewal for this employer.
+              No Ongoing Renewals
             </Text>
             <Button
               onClick={onGoToRenewalCycles}
               style={{ fontWeight: 600, flexShrink: 0 }}
             >
-              Go to Manage Renewals to Start Renewal
+              Manage Renewals
             </Button>
           </div>
         )}
