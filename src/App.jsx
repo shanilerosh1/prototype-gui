@@ -25,6 +25,7 @@ export default function App() {
       : SCREENS.CARRIER_OFFERS
   )
   const [renewalConfig, setRenewalConfig] = useState(null)
+  const [preSelectedLocKey, setPreSelectedLocKey] = useState(null)
 
   // Step 1 → Step 2: carry config from LOC selection to confirmation
   const handleConfigNext = (config) => {
@@ -104,6 +105,7 @@ export default function App() {
                 onViewDashboard={handleGoToRenewalCycles}
                 lockedConfig={renewalConfig}
                 onCancel={renewalConfig ? handleGoToRenewalCycles : null}
+                preSelectedLocKey={preSelectedLocKey}
               />
             )}
             {screen === SCREENS.CONFIRMATION && (
@@ -116,7 +118,7 @@ export default function App() {
             {screen === SCREENS.RENEWAL_DASHBOARD && (
               <RenewalCyclesDashboard
                 config={renewalConfig}
-                onStartRenewal={() => setScreen(SCREENS.LOC_SELECTION)}
+                onStartRenewal={(locKey) => { setPreSelectedLocKey(locKey ?? null); setScreen(SCREENS.LOC_SELECTION) }}
                 onViewCarrierOffers={handleGoToCarrierOffers}
               />
             )}

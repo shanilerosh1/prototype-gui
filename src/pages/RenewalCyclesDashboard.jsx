@@ -243,7 +243,7 @@ export default function RenewalCyclesDashboard({ config, onStartRenewal, onViewC
                       <Button
                         size="small"
                         icon={<PlusOutlined />}
-                        onClick={onStartRenewal}
+                        onClick={() => onStartRenewal(loc.key)}
                         style={{ fontWeight: 600, fontSize: 12 }}
                       >
                         Start Renewal

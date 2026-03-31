@@ -46,7 +46,7 @@ const ADDITIONAL_LOCS = [
 
 const DISABLED_BEFORE = dayjs('2026-01-01')
 
-export default function LOCSelectionPage({ onStartRenewal, onViewDashboard, lockedConfig = null, onCancel = null }) {
+export default function LOCSelectionPage({ onStartRenewal, onViewDashboard, lockedConfig = null, onCancel = null, preSelectedLocKey = null }) {
   // Carriers already in an active renewal — their rows are locked (can't be unchecked)
   const lockedCarrierIds = new Set(
     (lockedConfig || []).flatMap((loc) =>
@@ -72,12 +72,18 @@ export default function LOCSelectionPage({ onStartRenewal, onViewDashboard, lock
               ?.carriers?.find((cc) => cc.key === c.key)
             return [k, { selected: true, date: existingCarrier?.effectiveDate ?? null }]
           }
+          // Pre-select all carriers for the loc coming from the dashboard
+          if (preSelectedLocKey && loc.key === preSelectedLocKey) {
+            return [k, { selected: true, date: null }]
+          }
           return [k, { selected: false, date: null }]
         })
       )
     )
   )
-  const [expandedLocs, setExpandedLocs] = useState(new Set()) // which LOC cards are open
+  const [expandedLocs, setExpandedLocs] = useState(
+    preSelectedLocKey ? new Set([preSelectedLocKey]) : new Set()
+  )
   const [addedKeys, setAddedKeys]       = useState([])
   const [addedSels, setAddedSels]       = useState({})
   const [showAddPanel, setShowAddPanel] = useState(false)
