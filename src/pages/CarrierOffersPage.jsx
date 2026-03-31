@@ -171,6 +171,20 @@ export default function CarrierOffersPage({ config, onCompleteAFP, onGoToEffecti
       {/* Main content */}
       <Content style={{ padding: '32px 40px', background: '#fff', minHeight: '100vh' }}>
 
+        {/* No renewal banner */}
+        {!hasActiveRenewal && (
+          <div style={{
+            background: '#f8faff', border: '1px solid #dbeafe', borderRadius: 8,
+            padding: '12px 20px', marginBottom: 28,
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
+          }}>
+            <Text style={{ fontSize: 13, color: '#374151' }}>No Ongoing Renewals</Text>
+            <Button onClick={onGoToRenewalCycles} style={{ fontWeight: 600, flexShrink: 0 }}>
+              Manage Renewals
+            </Button>
+          </div>
+        )}
+
         {/* AFP banner — only when renewal is active */}
         {hasActiveRenewal && (
           <div style={{
@@ -282,8 +296,8 @@ export default function CarrierOffersPage({ config, onCompleteAFP, onGoToEffecti
               <div style={{
                 background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12,
                 boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
-                padding: '40px 48px', textAlign: 'center', maxWidth: 420,
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
+                padding: '64px 48px', textAlign: 'center', maxWidth: 420, minHeight: 320,
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16,
               }}>
                 <ReloadOutlined style={{ fontSize: 36, color: '#1a56db' }} />
                 <Text style={{ fontSize: 17, fontWeight: 700, color: '#111827' }}>
