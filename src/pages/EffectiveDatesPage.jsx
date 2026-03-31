@@ -310,7 +310,6 @@ export default function EffectiveDatesPage({ config, onBack }) {
               {[
                 { label: 'Carriers with upcoming dates', value: carriersInRenewal,                       color: '#1a56db', bg: '#eff6ff' },
                 { label: 'Carriers active (no renewal)', value: totalCarriers - carriersInRenewal,        color: '#16a34a', bg: '#f0fdf4' },
-                { label: 'Total carriers tracked',       value: totalCarriers,                            color: '#6b7280', bg: '#f9fafb' },
               ].map((s) => (
                 <div key={s.label} style={{
                   background: s.bg, borderRadius: 8, padding: '12px 20px',
