@@ -301,7 +301,6 @@ export default function EffectiveDatesPage({ config, onBack }) {
               </Text>
               <Text type="secondary" style={{ fontSize: 14 }}>
                 Each carrier maintains its own effective date history independently.
-                Dates are set at the carrier level through the renewal cycle — there is no single shared plan year closing date.
               </Text>
             </div>
 
