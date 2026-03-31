@@ -1,27 +1,17 @@
 import { useState } from 'react'
 import {
-  Typography,
-  Checkbox,
-  DatePicker,
-  Button,
-  Alert,
-  Radio,
+  Typography, Checkbox, DatePicker, Button, Alert, Radio, Tag,
 } from 'antd'
 import {
-  MedicineBoxOutlined,
-  SmileOutlined,
-  EyeOutlined,
-  BarChartOutlined,
-  PlusOutlined,
-  CloseOutlined,
-  ShopOutlined,
-  SafetyCertificateOutlined,
+  MedicineBoxOutlined, SmileOutlined, EyeOutlined,
+  BarChartOutlined, PlusOutlined, CloseOutlined,
+  ShopOutlined, SafetyCertificateOutlined,
+  RightOutlined, DownOutlined, CopyOutlined, LockOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 
 const { Title, Text, Paragraph } = Typography
 
-// LOCs that already have active plans — with their current carriers
 const BASE_LOCS = [
   {
     key: 'MEDICAL',
@@ -38,114 +28,136 @@ const BASE_LOCS = [
     label: 'Dental',
     hex: '#0e9f6e',
     icon: <SmileOutlined />,
-    carriers: [
-      { key: 'DELTA', name: 'Delta Dental' },
-    ],
+    carriers: [{ key: 'DELTA', name: 'Delta Dental' }],
   },
   {
     key: 'VISION',
     label: 'Vision',
     hex: '#7e3af2',
     icon: <EyeOutlined />,
-    carriers: [
-      { key: 'VSP', name: 'VSP' },
-    ],
+    carriers: [{ key: 'VSP', name: 'VSP' }],
   },
 ]
 
-// LOCs with no current plans — available to add
 const ADDITIONAL_LOCS = [
-  {
-    key: 'WORKSITE',
-    label: 'Worksite',
-    hex: '#d97706',
-    icon: <ShopOutlined />,
-    description: 'Accident, Critical Illness, Hospital Indemnity',
-  },
-  {
-    key: 'LIFE_DISABILITY',
-    label: 'Life & Disability',
-    hex: '#dc2626',
-    icon: <SafetyCertificateOutlined />,
-    description: 'Basic Life, Voluntary Life, AD&D, STD, LTD',
-  },
+  { key: 'WORKSITE',        label: 'Worksite',          hex: '#d97706', icon: <ShopOutlined />,              description: 'Accident, Critical Illness, Hospital Indemnity' },
+  { key: 'LIFE_DISABILITY', label: 'Life & Disability',  hex: '#dc2626', icon: <SafetyCertificateOutlined />, description: 'Basic Life, Voluntary Life, AD&D, STD, LTD' },
 ]
 
 const DISABLED_BEFORE = dayjs('2026-01-01')
 
-// Initial state: one entry per carrier — 'LOC_KEY.CARRIER_KEY' -> { selected, date }
-function buildInitialSelections() {
-  return Object.fromEntries(
-    BASE_LOCS.flatMap((loc) =>
-      loc.carriers.map((c) => [`${loc.key}.${c.key}`, { selected: false, date: null }])
+export default function LOCSelectionPage({ onStartRenewal, onViewDashboard, lockedConfig = null, onCancel = null }) {
+  // Carriers already in an active renewal — their rows are locked (can't be unchecked)
+  const lockedCarrierIds = new Set(
+    (lockedConfig || []).flatMap((loc) =>
+      (loc.carriers || []).filter((c) => c.selected).map((c) => `${loc.key}.${c.key}`)
     )
   )
-}
 
-export default function LOCSelectionPage({ onStartRenewal, onViewDashboard }) {
-  const [selections, setSelections]       = useState(buildInitialSelections())
-  const [addedKeys, setAddedKeys]         = useState([])
-  const [addedSels, setAddedSels]         = useState({}) // LOC key -> { selected, date }
-  const [showAddPanel, setShowAddPanel]   = useState(false)
-  const [smallGroup, setSmallGroup]       = useState('no')
+  const hasLocked = lockedCarrierIds.size > 0
 
-  // ── Derived state ──────────────────────────────────────────────────────────
+  // LOC names already in an active renewal (for the warning banner)
+  const activeRenewalLocNames = (lockedConfig || [])
+    .filter((loc) => loc.carriers?.some((c) => c.selected))
+    .map((loc) => loc.label)
 
-  // Is any carrier selected for this LOC?
-  const locAny = (loc) => loc.carriers.some((c) => selections[`${loc.key}.${c.key}`]?.selected)
-  // Are all carriers selected?
-  const locAll = (loc) => loc.carriers.every((c) => selections[`${loc.key}.${c.key}`]?.selected)
-  // Do all selected carriers have dates?
-  const locDates = (loc) =>
-    loc.carriers.every((c) => {
-      const s = selections[`${loc.key}.${c.key}`]
-      return !s?.selected || s?.date !== null
-    })
+  const [selections, setSelections] = useState(() =>
+    Object.fromEntries(
+      BASE_LOCS.flatMap((loc) =>
+        loc.carriers.map((c) => {
+          const k = `${loc.key}.${c.key}`
+          if (lockedCarrierIds.has(k)) {
+            const existingCarrier = (lockedConfig || [])
+              .find((l) => l.key === loc.key)
+              ?.carriers?.find((cc) => cc.key === c.key)
+            return [k, { selected: true, date: existingCarrier?.effectiveDate ?? null }]
+          }
+          return [k, { selected: false, date: null }]
+        })
+      )
+    )
+  )
+  const [expandedLocs, setExpandedLocs] = useState(new Set()) // which LOC cards are open
+  const [addedKeys, setAddedKeys]       = useState([])
+  const [addedSels, setAddedSels]       = useState({})
+  const [showAddPanel, setShowAddPanel] = useState(false)
+  const [smallGroupMap, setSmallGroupMap] = useState({})
 
-  const anyBaseSelected    = BASE_LOCS.some(locAny)
-  const anyMedSelected     = locAny(BASE_LOCS.find((l) => l.key === 'MEDICAL'))
-  const anyAdded           = Object.values(addedSels).some((s) => s.selected)
-  const anySelected        = anyBaseSelected || anyAdded
+  // ── Derived ────────────────────────────────────────────────────────────────
 
+  const locAny   = (loc) => loc.carriers.some((c) => selections[`${loc.key}.${c.key}`]?.selected)
+  const locAll   = (loc) => loc.carriers.every((c) => selections[`${loc.key}.${c.key}`]?.selected)
+  const locDates = (loc) => loc.carriers.every((c) => {
+    const s = selections[`${loc.key}.${c.key}`]
+    return !s?.selected || s?.date !== null
+  })
+
+  const anyBaseSelected      = BASE_LOCS.some(locAny)
+  const anyAdded             = Object.values(addedSels).some((s) => s.selected)
+  const anySelected          = anyBaseSelected || anyAdded
   const allSelectedHaveDates =
     BASE_LOCS.every(locDates) &&
     Object.values(addedSels).every((s) => !s.selected || s.date !== null)
-
   const canProceed  = anySelected && allSelectedHaveDates
   const skippedBase = BASE_LOCS.filter((loc) => !locAny(loc))
-
   const availableToAdd = ADDITIONAL_LOCS.filter((l) => !addedKeys.includes(l.key))
 
-  // ── Handlers ──────────────────────────────────────────────────────────────
+  // ── Handlers ───────────────────────────────────────────────────────────────
+
+  const toggleExpand = (key) =>
+    setExpandedLocs((prev) => {
+      const next = new Set(prev)
+      next.has(key) ? next.delete(key) : next.add(key)
+      return next
+    })
 
   const toggleCarrier = (locKey, carrierKey, checked) => {
     const k = `${locKey}.${carrierKey}`
+    if (lockedCarrierIds.has(k)) return // can't toggle locked carriers
     setSelections((prev) => ({
       ...prev,
       [k]: { selected: checked, date: checked ? prev[k].date : null },
     }))
+    if (checked) setExpandedLocs((prev) => new Set([...prev, locKey]))
   }
 
-  const toggleAllCarriers = (loc, checked) =>
+  const toggleAllCarriers = (loc, checked) => {
     setSelections((prev) => ({
       ...prev,
       ...Object.fromEntries(
-        loc.carriers.map((c) => {
-          const k = `${loc.key}.${c.key}`
-          return [k, { selected: checked, date: checked ? prev[k].date : null }]
-        })
+        loc.carriers
+          .filter((c) => !lockedCarrierIds.has(`${loc.key}.${c.key}`)) // skip locked
+          .map((c) => {
+            const k = `${loc.key}.${c.key}`
+            return [k, { selected: checked, date: checked ? prev[k].date : null }]
+          })
       ),
     }))
+    if (checked) setExpandedLocs((prev) => new Set([...prev, loc.key]))
+  }
 
   const setCarrierDate = (locKey, carrierKey, date) => {
     const k = `${locKey}.${carrierKey}`
     setSelections((prev) => ({ ...prev, [k]: { ...prev[k], date } }))
   }
 
+  // Apply one carrier's date to ALL selected carriers in the same LOC
+  const applyDateToAll = (loc, date) => {
+    setSelections((prev) => ({
+      ...prev,
+      ...Object.fromEntries(
+        loc.carriers
+          .filter((c) => prev[`${loc.key}.${c.key}`]?.selected)
+          .map((c) => [`${loc.key}.${c.key}`, { ...prev[`${loc.key}.${c.key}`], date }])
+      ),
+    }))
+  }
+
   const addLoc = (loc) => {
     setAddedKeys((prev) => [...prev, loc.key])
     setAddedSels((prev) => ({ ...prev, [loc.key]: { selected: true, date: null } }))
     setShowAddPanel(false)
+    setExpandedLocs((prev) => new Set([...prev, loc.key]))
   }
 
   const removeLoc = (key) => {
@@ -159,52 +171,57 @@ export default function LOCSelectionPage({ onStartRenewal, onViewDashboard }) {
         const s = selections[`${loc.key}.${c.key}`]
         return { ...c, selected: s?.selected ?? false, effectiveDate: s?.date ?? null }
       })
-      const selected = carrierData.some((c) => c.selected)
+      const selected  = carrierData.some((c) => c.selected)
       const firstDate = carrierData.find((c) => c.selected)?.effectiveDate ?? null
-      return {
-        ...loc,
-        selected,
-        effectiveDate: firstDate,
-        plan: loc.carriers.map((c) => `${c.plan} — ${c.name}`).join(', '),
-        carriers: carrierData,
-      }
+      return { ...loc, selected, effectiveDate: firstDate, plan: loc.label, carriers: carrierData }
     })
-
     const addedConfig = ADDITIONAL_LOCS
       .filter((l) => addedKeys.includes(l.key))
       .map((loc) => {
         const s = addedSels[loc.key] ?? { selected: true, date: null }
         return { ...loc, selected: s.selected, effectiveDate: s.date, carriers: [], plan: loc.description }
       })
-
     onStartRenewal([...config, ...addedConfig])
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+
+  // Build collapsed summary line for a LOC
+  const locSummary = (loc) => {
+    const selected = loc.carriers.filter((c) => selections[`${loc.key}.${c.key}`]?.selected)
+    if (selected.length === 0) return null
+    const dates = [...new Set(selected.map((c) => selections[`${loc.key}.${c.key}`]?.date?.format('MM/DD/YYYY')).filter(Boolean))]
+    return { count: selected.length, total: loc.carriers.length, dates }
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ maxWidth: 660, margin: '0 auto' }}>
+    <div style={{ maxWidth: 680, margin: '0 auto' }}>
 
       {/* Top link */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
-        <Button
-          type="link" icon={<BarChartOutlined />} onClick={onViewDashboard}
-          style={{ color: '#1a56db', fontSize: 13, padding: 0, fontWeight: 500 }}
-        >
-          Manage Renewal Cycles
+        <Button type="link" icon={<BarChartOutlined />} onClick={onViewDashboard}
+          style={{ color: '#1a56db', fontSize: 13, padding: 0, fontWeight: 500 }}>
+          Manage Renewals
         </Button>
       </div>
+
+      {/* Banner when adding more LOCs to an existing renewal */}
+      {hasLocked && (
+        <Alert
+          type="warning" showIcon style={{ marginBottom: 20, borderRadius: 8 }}
+          message={`${activeRenewalLocNames.join(' & ')} renewal is already in progress`}
+          description="Carriers already in renewal are locked and shown for reference. Select and configure the additional carriers you want to start renewing."
+        />
+      )}
 
       {/* Step indicator */}
       <div style={{ textAlign: 'center', marginBottom: 32 }}>
         <Title level={3} style={{ marginBottom: 24 }}>Start New Renewal</Title>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0, marginBottom: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-            <div style={{
-              width: 22, height: 22, borderRadius: '50%',
-              border: '3px solid #1a2332', background: '#fff',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
+            <div style={{ width: 22, height: 22, borderRadius: '50%', border: '3px solid #1a2332', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#1a2332' }} />
             </div>
             <Text strong style={{ fontSize: 13 }}>Select LOCs & Dates</Text>
@@ -217,270 +234,342 @@ export default function LOCSelectionPage({ onStartRenewal, onViewDashboard }) {
         </div>
       </div>
 
-      {/* Description */}
       <Paragraph style={{ color: '#4b5563', fontSize: 15, lineHeight: 1.7, marginBottom: 28 }}>
         Select which carriers to renew under each Line of Coverage and set their effective dates.
-        You can also add new LOCs that aren't part of your current plan year.
+        Click a LOC to expand and configure its carriers.
       </Paragraph>
 
-      {/* LOC table */}
-      <div style={{ marginBottom: 28 }}>
-
-        {/* Column headers */}
-        <div style={{
-          display: 'grid', gridTemplateColumns: '1fr 80px 180px',
-          gap: 12, padding: '0 4px 10px',
-          borderBottom: '1px solid #e5e7eb', marginBottom: 0,
-        }}>
-          <Text style={{ fontSize: 12, color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            Line of Coverage / Carrier
-          </Text>
-          <Text style={{ fontSize: 12, color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            Renew
-          </Text>
-          <Text style={{ fontSize: 12, color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            Effective Date *
-          </Text>
-        </div>
-
-        {/* Base LOC sections */}
-        {BASE_LOCS.map((loc, locIdx) => {
-          const isMulti    = loc.carriers.length > 1
-          const anyLoc     = locAny(loc)
-          const allLoc     = locAll(loc)
-          const isLastBase = locIdx === BASE_LOCS.length - 1 && addedKeys.length === 0
-          const selectedCount = loc.carriers.filter((c) => selections[`${loc.key}.${c.key}`]?.selected).length
+      {/* LOC cards */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 28 }}>
+        {BASE_LOCS.map((loc) => {
+          const isExpanded    = expandedLocs.has(loc.key)
+          const isMulti       = loc.carriers.length > 1
+          const anyLoc        = locAny(loc)
+          const allLoc        = locAll(loc)
+          const summary       = locSummary(loc)
+          const missingDates  = anyLoc && !locDates(loc)
 
           return (
             <div
               key={loc.key}
-              style={{ borderBottom: isLastBase ? 'none' : '1px solid #f0f1f3' }}
+              style={{
+                border: anyLoc ? `1.5px solid ${loc.hex}40` : '1.5px solid #e5e7eb',
+                borderRadius: 12,
+                background: '#fff',
+                overflow: 'hidden',
+                transition: 'border-color 0.15s',
+              }}
             >
-              {/* ── LOC header ── */}
-              <div style={{
-                display: 'grid', gridTemplateColumns: '1fr 80px 180px',
-                gap: 12, padding: '14px 4px 10px',
-                background: anyLoc ? loc.hex + '08' : 'transparent',
-              }}>
-                {/* LOC name */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{
-                    width: 32, height: 32, borderRadius: 8,
-                    background: anyLoc ? loc.hex + '18' : '#f3f4f6',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: anyLoc ? loc.hex : '#9ca3af',
-                    fontSize: 14, transition: 'all 0.15s',
-                  }}>
-                    {loc.icon}
-                  </div>
-                  <div>
-                    <Text style={{ fontWeight: 700, fontSize: 14, color: anyLoc ? '#111827' : '#6b7280' }}>
-                      {loc.label}
-                    </Text>
-                    {isMulti && (
-                      <div style={{ fontSize: 11, color: anyLoc ? loc.hex : '#9ca3af', marginTop: 1 }}>
-                        {selectedCount} of {loc.carriers.length} carriers selected
-                      </div>
-                    )}
-                  </div>
+              {/* ── Card header (always visible, clickable) ── */}
+              <div
+                onClick={() => toggleExpand(loc.key)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '14px 18px',
+                  background: anyLoc ? loc.hex + '06' : '#fafafa',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                }}
+              >
+                {/* Chevron */}
+                <span style={{ color: '#9ca3af', fontSize: 11, width: 12, flexShrink: 0 }}>
+                  {isExpanded ? <DownOutlined /> : <RightOutlined />}
+                </span>
+
+                {/* LOC icon */}
+                <div style={{
+                  width: 36, height: 36, borderRadius: 9,
+                  background: anyLoc ? loc.hex + '18' : '#f3f4f6',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: anyLoc ? loc.hex : '#9ca3af', fontSize: 16,
+                  transition: 'all 0.15s', flexShrink: 0,
+                }}>
+                  {loc.icon}
                 </div>
 
-                {/* LOC-level checkbox */}
-                <div style={{ display: 'flex', alignItems: 'center' }}>
+                {/* LOC name + summary */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={{ fontWeight: 700, fontSize: 15, color: anyLoc ? '#111827' : '#6b7280' }}>
+                    {loc.label}
+                  </Text>
+                  {/* Collapsed summary */}
+                  {!isExpanded && summary && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3, flexWrap: 'wrap' }}>
+                      <Text style={{ fontSize: 12, color: loc.hex }}>
+                        {summary.count} of {summary.total} carrier{summary.total > 1 ? 's' : ''} selected
+                      </Text>
+                      {summary.dates.length > 0 ? (
+                        summary.dates.map((d) => (
+                          <Tag key={d} style={{ fontSize: 11, borderRadius: 8, color: loc.hex, borderColor: loc.hex + '50', background: loc.hex + '0d', margin: 0 }}>
+                            {d}
+                          </Tag>
+                        ))
+                      ) : (
+                        <Text style={{ fontSize: 12, color: '#ef4444' }}>· dates required</Text>
+                      )}
+                    </div>
+                  )}
+                  {!isExpanded && !summary && (
+                    <Text style={{ fontSize: 12, color: '#9ca3af', display: 'block', marginTop: 2 }}>
+                      Click to select carriers
+                    </Text>
+                  )}
+                </div>
+
+                {/* Right side: LOC-level checkbox + status */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}
+                  onClick={(e) => e.stopPropagation()}>
+                  {anyLoc && missingDates && (
+                    <Text style={{ fontSize: 11, color: '#ef4444', fontWeight: 500 }}>Dates needed</Text>
+                  )}
+                  {anyLoc && !missingDates && (
+                    <Tag color="blue" style={{ borderRadius: 8, fontSize: 11, margin: 0 }}>In Renewal</Tag>
+                  )}
                   {isMulti ? (
                     <Checkbox
                       checked={allLoc}
                       indeterminate={anyLoc && !allLoc}
                       onChange={(e) => toggleAllCarriers(loc, e.target.checked)}
-                    >
-                      <Text style={{ fontSize: 12, color: '#6b7280' }}>All</Text>
-                    </Checkbox>
+                    />
                   ) : (
-                    // Single-carrier: LOC checkbox controls the only carrier
                     <Checkbox
                       checked={selections[`${loc.key}.${loc.carriers[0].key}`]?.selected}
                       onChange={(e) => toggleCarrier(loc.key, loc.carriers[0].key, e.target.checked)}
                     />
                   )}
                 </div>
-
-                {/* No date at LOC level — dates live on carrier rows */}
-                <div />
               </div>
 
-              {/* ── Carrier rows ── */}
-              <div style={{ paddingLeft: 42, paddingBottom: 8 }}>
-                {loc.carriers.map((carrier) => {
-                  const k   = `${loc.key}.${carrier.key}`
-                  const sel = selections[k]
-                  return (
-                    <div
-                      key={carrier.key}
-                      style={{
-                        display: 'grid', gridTemplateColumns: '1fr 80px 180px',
-                        gap: 12, padding: '8px 4px',
-                        borderTop: '1px solid #f3f4f6',
-                        alignItems: 'center',
-                      }}
-                    >
-                      {/* Carrier name */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {/* ── Expanded carrier rows ── */}
+              {isExpanded && (
+                <div style={{ borderTop: '1px solid #f3f4f6' }}>
+                  {/* Column headers */}
+                  <div style={{
+                    display: 'grid', gridTemplateColumns: '1fr 60px 190px',
+                    gap: 12, padding: '8px 18px 6px 60px',
+                    background: '#f9fafb',
+                  }}>
+                    <Text style={{ fontSize: 11, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Carrier</Text>
+                    <Text style={{ fontSize: 11, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Renew</Text>
+                    <Text style={{ fontSize: 11, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Effective Date *</Text>
+                  </div>
+
+                  {loc.carriers.map((carrier, ci) => {
+                    const k        = `${loc.key}.${carrier.key}`
+                    const sel      = selections[k]
+                    const isLast   = ci === loc.carriers.length - 1
+                    const isLocked = lockedCarrierIds.has(k)
+                    const otherSelected = isMulti && loc.carriers.filter((c) => c.key !== carrier.key && selections[`${loc.key}.${c.key}`]?.selected)
+                    const showApplyAll  = !isLocked && isMulti && sel.selected && sel.date && otherSelected.length > 0
+
+                    return (
+                      <div key={carrier.key}>
+                      <div style={{
+                        display: 'grid', gridTemplateColumns: '1fr 60px 190px',
+                        gap: 12, padding: '10px 18px 10px 60px', alignItems: 'center',
+                        borderBottom: '1px solid #f9fafb',
+                        background: isLocked ? '#f9fafb' : sel.selected ? '#fff' : '#fafafa',
+                      }}>
+                        {/* Carrier name */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          {isLocked
+                            ? <LockOutlined style={{ fontSize: 10, color: '#9ca3af', flexShrink: 0 }} />
+                            : <div style={{
+                                width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
+                                background: sel.selected ? loc.hex : '#d1d5db',
+                                transition: 'background 0.15s',
+                              }} />
+                          }
+                          <Text style={{ fontSize: 13, fontWeight: 600, color: isLocked ? '#9ca3af' : sel.selected ? '#111827' : '#9ca3af' }}>
+                            {carrier.name}
+                          </Text>
+                          {isLocked && (
+                            <Tag style={{ fontSize: 10, borderRadius: 6, color: '#1a56db', borderColor: '#bfdbfe', background: '#eff6ff', margin: 0, padding: '0 5px' }}>
+                              In Renewal
+                            </Tag>
+                          )}
+                        </div>
+
+                        {/* Checkbox (or empty for locked) */}
+                        <div>
+                          {!isLocked && isMulti ? (
+                            <Checkbox
+                              checked={sel.selected}
+                              onChange={(e) => toggleCarrier(loc.key, carrier.key, e.target.checked)}
+                            />
+                          ) : null}
+                        </div>
+
+                        {/* Date (locked = read-only tag; unlocked = DatePicker) */}
+                        <div>
+                          {isLocked ? (
+                            <Tag icon={<LockOutlined />} style={{ fontSize: 11, borderRadius: 6, color: '#6b7280', borderColor: '#e5e7eb' }}>
+                              {sel.date?.format('MM/DD/YYYY') ?? '—'}
+                            </Tag>
+                          ) : (
+                            <>
+                              <DatePicker
+                                style={{ width: '100%' }}
+                                placeholder="MM/DD/YYYY"
+                                value={sel.date}
+                                disabled={!sel.selected}
+                                onChange={(date) => setCarrierDate(loc.key, carrier.key, date)}
+                                disabledDate={(d) => d && d.isBefore(DISABLED_BEFORE)}
+                                format="MM/DD/YYYY"
+                              />
+                              {showApplyAll && (
+                                <button
+                                  onClick={() => applyDateToAll(loc, sel.date)}
+                                  style={{
+                                    marginTop: 4, background: 'none', border: 'none',
+                                    cursor: 'pointer', padding: 0,
+                                    display: 'flex', alignItems: 'center', gap: 4,
+                                    color: loc.hex, fontSize: 11, fontWeight: 600,
+                                  }}
+                                >
+                                  <CopyOutlined style={{ fontSize: 10 }} />
+                                  Apply to all carriers
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Small Group row — per Medical carrier, only when selected and not locked */}
+                      {loc.key === 'MEDICAL' && sel.selected && !isLocked && (
                         <div style={{
-                          width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
-                          background: sel.selected ? loc.hex : '#d1d5db',
-                          transition: 'background 0.15s',
-                        }} />
-                        <Text style={{ fontSize: 13, fontWeight: 600, color: sel.selected ? '#111827' : '#9ca3af' }}>
-                          {carrier.name}
-                        </Text>
-                      </div>
-
-                      {/* Per-carrier checkbox (only for multi-carrier LOCs; single-carrier handled at LOC level) */}
-                      <div>
-                        {isMulti && (
-                          <Checkbox
-                            checked={sel.selected}
-                            onChange={(e) => toggleCarrier(loc.key, carrier.key, e.target.checked)}
-                          />
-                        )}
-                      </div>
-
-                      {/* Per-carrier date */}
-                      <DatePicker
-                        style={{ width: '100%' }}
-                        placeholder="MM/DD/YYYY"
-                        value={sel.date}
-                        disabled={!sel.selected}
-                        onChange={(date) => setCarrierDate(loc.key, carrier.key, date)}
-                        disabledDate={(d) => d && d.isBefore(DISABLED_BEFORE)}
-                        format="MM/DD/YYYY"
-                      />
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
+                          margin: '0 18px 10px 60px', padding: '8px 14px',
+                          background: '#eef4ff', border: '1px solid #c7d9fb', borderRadius: 8,
+                        }}>
+                          <Text style={{ fontSize: 12, color: '#1e3a6e' }}>
+                            Will the <Text strong style={{ color: '#1e3a6e' }}>{carrier.name}</Text> renewal contain Small Group offers?
+                          </Text>
+                          <Radio.Group
+                            value={smallGroupMap[k] ?? 'no'}
+                            onChange={(e) => setSmallGroupMap((prev) => ({ ...prev, [k]: e.target.value }))}
+                            style={{ display: 'flex', gap: 16, flexShrink: 0 }}
+                          >
+                            <Radio value="no">No</Radio>
+                            <Radio value="yes">Yes</Radio>
+                          </Radio.Group>
+                        </div>
+                      )}
                     </div>
-                  )
-                })}
-              </div>
-
-              {/* Small Group sub-row — Medical only, shown when any medical carrier selected */}
-              {loc.key === 'MEDICAL' && anyMedSelected && (
-                <div style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
-                  margin: '0 4px 12px 46px', padding: '10px 14px',
-                  background: '#eef4ff', border: '1px solid #c7d9fb', borderRadius: 8,
-                }}>
-                  <Text style={{ fontSize: 13, color: '#1e3a6e' }}>
-                    Will this renewal contain Small Group offers?
-                  </Text>
-                  <Radio.Group
-                    value={smallGroup}
-                    onChange={(e) => setSmallGroup(e.target.value)}
-                    style={{ display: 'flex', gap: 16, flexShrink: 0 }}
-                  >
-                    <Radio value="no">No</Radio>
-                    <Radio value="yes">Yes</Radio>
-                  </Radio.Group>
+                    )
+                  })}
                 </div>
               )}
             </div>
           )
         })}
 
-        {/* Added LOC rows (no carriers — single checkbox + date) */}
+        {/* Added LOC cards */}
         {addedKeys.length > 0 && (
           <>
-            <div style={{
-              padding: '10px 4px 6px',
-              borderTop: '1px dashed #e5e7eb', marginTop: 4,
-            }}>
+            <div style={{ padding: '6px 4px 2px' }}>
               <Text style={{ fontSize: 11, color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                 Added to this renewal
               </Text>
             </div>
-            {addedKeys.map((key, i) => {
-              const loc = ADDITIONAL_LOCS.find((l) => l.key === key)
-              const sel = addedSels[key] ?? { selected: true, date: null }
-              const isLast = i === addedKeys.length - 1
+            {addedKeys.map((key) => {
+              const loc      = ADDITIONAL_LOCS.find((l) => l.key === key)
+              const sel      = addedSels[key] ?? { selected: true, date: null }
+              const isExpanded = expandedLocs.has(key)
+
               return (
                 <div key={loc.key} style={{
-                  borderBottom: isLast ? 'none' : '1px solid #f3f4f6',
-                  background: sel.selected ? '#f8faff' : 'transparent',
+                  border: sel.selected ? `1.5px solid ${loc.hex}40` : '1.5px solid #e5e7eb',
+                  borderRadius: 12, background: '#fff', overflow: 'hidden',
                 }}>
-                  <div style={{
-                    display: 'grid', gridTemplateColumns: '1fr 80px 180px 28px',
-                    gap: 12, padding: '14px 4px',
-                    alignItems: 'center',
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div style={{
-                        width: 32, height: 32, borderRadius: 8,
-                        background: sel.selected ? loc.hex + '15' : '#f3f4f6',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        color: sel.selected ? loc.hex : '#9ca3af', fontSize: 14,
-                      }}>
-                        {loc.icon}
+                  <div
+                    onClick={() => toggleExpand(key)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 12,
+                      padding: '14px 18px',
+                      background: sel.selected ? loc.hex + '06' : '#fafafa',
+                      cursor: 'pointer', userSelect: 'none',
+                    }}
+                  >
+                    <span style={{ color: '#9ca3af', fontSize: 11, width: 12, flexShrink: 0 }}>
+                      {isExpanded ? <DownOutlined /> : <RightOutlined />}
+                    </span>
+                    <div style={{
+                      width: 36, height: 36, borderRadius: 9,
+                      background: sel.selected ? loc.hex + '18' : '#f3f4f6',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: sel.selected ? loc.hex : '#9ca3af', fontSize: 16, flexShrink: 0,
+                    }}>
+                      {loc.icon}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Text style={{ fontWeight: 700, fontSize: 15, color: '#111827' }}>{loc.label}</Text>
+                        <span style={{
+                          fontSize: 10, fontWeight: 600, color: loc.hex,
+                          background: loc.hex + '15', borderRadius: 4, padding: '1px 6px',
+                        }}>NEW</span>
                       </div>
-                      <div>
-                        <div style={{ fontWeight: 600, fontSize: 14, color: '#111827', display: 'flex', alignItems: 'center', gap: 6 }}>
-                          {loc.label}
-                          <span style={{
-                            fontSize: 10, fontWeight: 600, color: loc.hex,
-                            background: loc.hex + '15', borderRadius: 4,
-                            padding: '1px 6px', letterSpacing: '0.04em',
-                          }}>NEW</span>
-                        </div>
-                        <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 1 }}>{loc.description}</div>
+                      <Text style={{ fontSize: 12, color: '#9ca3af' }}>{loc.description}</Text>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}
+                      onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => removeLoc(loc.key)}
+                        style={{
+                          background: 'none', border: 'none', cursor: 'pointer',
+                          color: '#9ca3af', fontSize: 13, padding: 4, borderRadius: 4,
+                          display: 'flex', alignItems: 'center', transition: 'color 0.15s',
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.color = '#ef4444'}
+                        onMouseLeave={(e) => e.currentTarget.style.color = '#9ca3af'}
+                      >
+                        <CloseOutlined />
+                      </button>
+                      <Checkbox
+                        checked={sel.selected}
+                        onChange={(e) =>
+                          setAddedSels((prev) => ({
+                            ...prev,
+                            [key]: { selected: e.target.checked, date: e.target.checked ? prev[key].date : null },
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  {isExpanded && (
+                    <div style={{ borderTop: '1px solid #f3f4f6', padding: '14px 18px 14px 60px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <Text style={{ fontSize: 13, color: '#6b7280', flex: 1 }}>Effective Date *</Text>
+                        <DatePicker
+                          style={{ width: 190 }}
+                          placeholder="MM/DD/YYYY"
+                          value={sel.date}
+                          disabled={!sel.selected}
+                          onChange={(date) => setAddedSels((prev) => ({ ...prev, [key]: { ...prev[key], date } }))}
+                          disabledDate={(d) => d && d.isBefore(DISABLED_BEFORE)}
+                          format="MM/DD/YYYY"
+                        />
                       </div>
                     </div>
-
-                    <Checkbox
-                      checked={sel.selected}
-                      onChange={(e) =>
-                        setAddedSels((prev) => ({
-                          ...prev,
-                          [key]: { selected: e.target.checked, date: e.target.checked ? prev[key].date : null },
-                        }))
-                      }
-                    />
-
-                    <DatePicker
-                      style={{ width: '100%' }}
-                      placeholder="MM/DD/YYYY"
-                      value={sel.date}
-                      disabled={!sel.selected}
-                      onChange={(date) => setAddedSels((prev) => ({ ...prev, [key]: { ...prev[key], date } }))}
-                      disabledDate={(d) => d && d.isBefore(DISABLED_BEFORE)}
-                      format="MM/DD/YYYY"
-                    />
-
-                    <button
-                      onClick={() => removeLoc(loc.key)}
-                      title={`Remove ${loc.label}`}
-                      style={{
-                        background: 'none', border: 'none', cursor: 'pointer',
-                        color: '#9ca3af', fontSize: 14, padding: 4, borderRadius: 4,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        transition: 'color 0.15s',
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.color = '#ef4444'}
-                      onMouseLeave={(e) => e.currentTarget.style.color = '#9ca3af'}
-                    >
-                      <CloseOutlined />
-                    </button>
-                  </div>
+                  )}
                 </div>
               )
             })}
           </>
         )}
 
-        {/* Add LOC button + panel */}
+        {/* Add LOC button */}
         {availableToAdd.length > 0 && (
-          <div style={{ marginTop: 12, position: 'relative' }}>
+          <div style={{ position: 'relative' }}>
             <button
               onClick={() => setShowAddPanel((v) => !v)}
               style={{
                 display: 'flex', alignItems: 'center', gap: 6,
-                background: 'none', border: '1px dashed #d1d5db',
-                borderRadius: 8, padding: '8px 14px', cursor: 'pointer',
+                background: 'none', border: '1.5px dashed #d1d5db',
+                borderRadius: 12, padding: '12px 18px', cursor: 'pointer',
                 color: '#1a56db', fontSize: 13, fontWeight: 600,
                 width: '100%', justifyContent: 'center', transition: 'all 0.15s',
               }}
@@ -493,28 +582,25 @@ export default function LOCSelectionPage({ onStartRenewal, onViewDashboard }) {
             {showAddPanel && (
               <div style={{
                 position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0,
-                background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10,
+                background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12,
                 boxShadow: '0 8px 24px rgba(0,0,0,0.1)', zIndex: 50, overflow: 'hidden',
               }}>
-                <div style={{ padding: '10px 14px 6px', borderBottom: '1px solid #f3f4f6' }}>
+                <div style={{ padding: '10px 16px 6px', borderBottom: '1px solid #f3f4f6' }}>
                   <Text style={{ fontSize: 11, color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                    No current plans — select to add to this renewal
+                    No current plans — select to add
                   </Text>
                 </div>
                 {availableToAdd.map((loc) => (
-                  <div
-                    key={loc.key} onClick={() => addLoc(loc)}
+                  <div key={loc.key} onClick={() => addLoc(loc)}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 12,
-                      padding: '12px 16px', cursor: 'pointer',
-                      borderBottom: '1px solid #f9fafb', transition: 'background 0.1s',
+                      padding: '12px 16px', cursor: 'pointer', transition: 'background 0.1s',
                     }}
                     onMouseEnter={(e) => e.currentTarget.style.background = '#f8faff'}
                     onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                   >
                     <div style={{
-                      width: 32, height: 32, borderRadius: 8,
-                      background: loc.hex + '15',
+                      width: 32, height: 32, borderRadius: 8, background: loc.hex + '15',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       color: loc.hex, fontSize: 14, flexShrink: 0,
                     }}>
@@ -535,34 +621,23 @@ export default function LOCSelectionPage({ onStartRenewal, onViewDashboard }) {
 
       {/* Validation alerts */}
       {!anySelected && (
-        <Alert
-          style={{ marginBottom: 16, borderRadius: 8 }}
-          type="warning" showIcon
-          message="Please select at least one carrier to proceed."
-        />
+        <Alert style={{ marginBottom: 16, borderRadius: 8 }} type="warning" showIcon
+          message="Please select at least one carrier to proceed." />
       )}
       {anySelected && !allSelectedHaveDates && (
-        <Alert
-          style={{ marginBottom: 16, borderRadius: 8 }}
-          type="warning" showIcon
-          message="Please set an effective date for all selected carriers."
-        />
+        <Alert style={{ marginBottom: 16, borderRadius: 8 }} type="warning" showIcon
+          message="Please set an effective date for all selected carriers." />
       )}
       {anySelected && skippedBase.length > 0 && allSelectedHaveDates && (
-        <Alert
-          style={{ marginBottom: 16, borderRadius: 8 }}
-          type="info" showIcon
+        <Alert style={{ marginBottom: 16, borderRadius: 8 }} type="info" showIcon
           message={`${skippedBase.map((l) => l.label).join(' & ')} ${skippedBase.length === 1 ? 'is' : 'are'} not included in this renewal`}
-          description={`${skippedBase.length === 1 ? 'It' : 'They'} will not be part of this renewal. Current plans will remain active and can be renewed in a future cycle.`}
+          description={`Current plans remain active and will be copied to the new plan year when AFP is completed.`}
         />
       )}
 
       {/* Footer */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center', marginTop: 8 }}>
-        <Button
-          type="primary" size="large"
-          disabled={!canProceed}
-          onClick={handleStart}
+        <Button type="primary" size="large" disabled={!canProceed} onClick={handleStart}
           style={{
             width: '100%', height: 48, fontSize: 15, fontWeight: 600,
             background: canProceed ? '#1a2332' : undefined,
@@ -572,9 +647,11 @@ export default function LOCSelectionPage({ onStartRenewal, onViewDashboard }) {
         >
           Next
         </Button>
-        <Button type="link" style={{ color: '#1a56db', fontWeight: 500 }}>
-          Cancel
-        </Button>
+        {onCancel && (
+          <Button type="link" onClick={onCancel} style={{ color: '#6b7280', fontWeight: 500 }}>
+            Cancel
+          </Button>
+        )}
       </div>
     </div>
   )

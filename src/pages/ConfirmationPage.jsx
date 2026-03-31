@@ -64,6 +64,9 @@ const PREMIUM_OPTIONS = [
 export default function ConfirmationPage({ config, onBack, onStartRenewal }) {
   const [premiumTypes, setPremiumTypes] = useState({})
 
+  // LOCs being started in this renewal run (for button label)
+  const startingLocs = (config || []).filter((l) => l.selected).map((l) => l.label)
+
   // Look up whether a LOC was included in the renewal config
   const configLoc = (key) => config?.find((l) => l.key === key)
 
@@ -114,7 +117,7 @@ export default function ConfirmationPage({ config, onBack, onStartRenewal }) {
       <Title level={4} style={{ marginBottom: 8 }}>Current Plans</Title>
       <Text type="secondary" style={{ fontSize: 14, lineHeight: 1.7, display: 'block', marginBottom: 20 }}>
         To start the new renewal, we require current plan information for comparisons between offers.
-        LOCs not included in this renewal will carry over their current plans as-is at AFP.
+        LOCs not included in this renewal will have their existing plans copied as-is to the new plan year at AFP.
       </Text>
 
       <Alert
@@ -240,7 +243,7 @@ export default function ConfirmationPage({ config, onBack, onStartRenewal }) {
               }}>
                 <SyncOutlined style={{ color: '#9ca3af', fontSize: 14, flexShrink: 0 }} />
                 <Text style={{ fontSize: 13, color: '#6b7280', lineHeight: 1.6 }}>
-                  Not included in this renewal. Current plans and rates will carry over as-is when AFP is completed.
+                  Not included in this renewal. Existing plans will be copied as-is to the new plan year when AFP is completed.
                 </Text>
               </div>
             )}
@@ -257,11 +260,11 @@ export default function ConfirmationPage({ config, onBack, onStartRenewal }) {
             background: '#1a2332', borderColor: '#1a2332', borderRadius: 8,
           }}
         >
-          Confirm Current Plans and Start Renewal Period
+          Confirm Current Plans and Start {startingLocs.join(' & ')} Renewal
         </Button>
         <Button type="link" icon={<ArrowLeftOutlined />} onClick={onBack}
           style={{ color: '#1a56db', fontWeight: 500 }}>
-          Cancel
+          Back
         </Button>
       </div>
     </div>

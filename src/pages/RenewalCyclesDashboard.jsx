@@ -1,32 +1,56 @@
-import { Typography, Button, Tag, Divider, Steps, Tooltip } from 'antd'
+import { Typography, Button, Tag, Divider, Tooltip } from 'antd'
 import {
-  ArrowLeftOutlined,
-  MedicineBoxOutlined,
-  SmileOutlined,
-  EyeOutlined,
-  CalendarOutlined,
-  CheckCircleFilled,
-  SyncOutlined,
-  ClockCircleOutlined,
-  PlusOutlined,
-  FileTextOutlined,
-  AuditOutlined,
-  ReloadOutlined,
+  MedicineBoxOutlined, SmileOutlined, EyeOutlined,
+  ShopOutlined, SafetyCertificateOutlined,
+  CalendarOutlined, CheckCircleFilled, SyncOutlined, PlusOutlined,
+  FileTextOutlined, AuditOutlined, ReloadOutlined, ArrowRightOutlined,
 } from '@ant-design/icons'
 
 const { Title, Text } = Typography
 
 const LOC_META = {
-  MEDICAL: { icon: <MedicineBoxOutlined />, hex: '#1a56db', bg: '#eff6ff', label: 'Medical' },
-  DENTAL:  { icon: <SmileOutlined />,        hex: '#0e9f6e', bg: '#f0fdf4', label: 'Dental'  },
-  VISION:  { icon: <EyeOutlined />,          hex: '#7e3af2', bg: '#faf5ff', label: 'Vision'  },
+  MEDICAL:          { icon: <MedicineBoxOutlined />,       hex: '#1a56db', bg: '#eff6ff', label: 'Medical'          },
+  DENTAL:           { icon: <SmileOutlined />,             hex: '#0e9f6e', bg: '#f0fdf4', label: 'Dental'           },
+  VISION:           { icon: <EyeOutlined />,               hex: '#7e3af2', bg: '#faf5ff', label: 'Vision'           },
+  WORKSITE:         { icon: <ShopOutlined />,              hex: '#d97706', bg: '#fffbeb', label: 'Worksite'         },
+  LIFE_DISABILITY:  { icon: <SafetyCertificateOutlined />, hex: '#dc2626', bg: '#fff1f2', label: 'Life & Disability' },
 }
 
-// Hardcoded previous cycle (completed) — same for all LOCs
+// All known LOCs with their carriers (base system data)
+const ALL_LOCS = [
+  {
+    key: 'MEDICAL',
+    carriers: [
+      { key: 'ANTHEM', name: 'Anthem Blue Cross' },
+      { key: 'AETNA',  name: 'Aetna' },
+    ],
+  },
+  {
+    key: 'DENTAL',
+    carriers: [{ key: 'DELTA', name: 'Delta Dental' }],
+  },
+  {
+    key: 'VISION',
+    carriers: [{ key: 'VSP', name: 'VSP' }],
+  },
+  {
+    key: 'LIFE_DISABILITY',
+    carriers: [{ key: 'SUN', name: 'Sun Life' }],
+  },
+  {
+    key: 'WORKSITE',
+    carriers: [{ key: 'AFLAC', name: 'Aflac' }],
+  },
+]
+
+// Previous cycle data per carrier
 const PREV_CYCLE = {
-  effectiveDate: '01/01/2026',
-  endDate: '12/31/2026',
-  completedDate: '12/15/2025',
+  'MEDICAL.ANTHEM':         { effectiveDate: '01/01/2026', completedDate: '12/15/2025' },
+  'MEDICAL.AETNA':          { effectiveDate: '01/01/2026', completedDate: '12/15/2025' },
+  'DENTAL.DELTA':           { effectiveDate: '01/01/2026', completedDate: '12/15/2025' },
+  'VISION.VSP':             { effectiveDate: '01/01/2026', completedDate: '12/15/2025' },
+  'LIFE_DISABILITY.SUN':    { effectiveDate: '01/01/2026', completedDate: '12/15/2025' },
+  'WORKSITE.AFLAC':         { effectiveDate: '01/01/2026', completedDate: '12/15/2025' },
 }
 
 const RENEWAL_STAGES = [
@@ -37,142 +61,118 @@ const RENEWAL_STAGES = [
 ]
 
 function StageProgress({ currentStage }) {
-  // currentStage: 0=offers, 1=proposals, 2=afp, 3=complete
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
       {RENEWAL_STAGES.map((stage, i) => {
         const isDone    = i < currentStage
         const isCurrent = i === currentStage
-        const isPending = i > currentStage
         return (
           <div key={stage.key} style={{ display: 'flex', alignItems: 'center' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+            <Tooltip title={stage.label}>
               <div style={{
-                width: 24, height: 24, borderRadius: '50%',
+                width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
                 background: isDone ? '#1a2332' : isCurrent ? '#1a56db' : '#e5e7eb',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 11,
-                color: isDone || isCurrent ? '#fff' : '#9ca3af',
+                fontSize: 10, color: isDone || isCurrent ? '#fff' : '#9ca3af',
+                cursor: 'default',
               }}>
                 {isDone
-                  ? <CheckCircleFilled style={{ fontSize: 12 }} />
-                  : <span style={{ fontWeight: 700 }}>{i + 1}</span>
-                }
+                  ? <CheckCircleFilled style={{ fontSize: 10 }} />
+                  : <span style={{ fontWeight: 700 }}>{i + 1}</span>}
               </div>
-              <Text style={{
-                fontSize: 10, whiteSpace: 'nowrap',
-                color: isCurrent ? '#1a56db' : isDone ? '#1a2332' : '#9ca3af',
-                fontWeight: isCurrent ? 700 : 400,
-              }}>
-                {stage.label}
-              </Text>
-            </div>
+            </Tooltip>
             {i < RENEWAL_STAGES.length - 1 && (
-              <div style={{
-                width: 32, height: 2,
-                background: isDone ? '#1a2332' : '#e5e7eb',
-                marginBottom: 16, flexShrink: 0,
-              }} />
+              <div style={{ width: 14, height: 2, background: isDone ? '#1a2332' : '#e5e7eb', flexShrink: 0 }} />
             )}
           </div>
         )
       })}
+      {/* Current stage label next to the dots */}
+      <Text style={{ fontSize: 11, color: '#1a56db', fontWeight: 600, marginLeft: 8, whiteSpace: 'nowrap' }}>
+        {RENEWAL_STAGES[currentStage]?.label}
+      </Text>
     </div>
   )
 }
 
-export default function RenewalCyclesDashboard({ config, onBack, onStartRenewal }) {
-  // config is null if no renewal started yet, otherwise has LOC selections
+export default function RenewalCyclesDashboard({ config, onStartRenewal, onViewCarrierOffers }) {
   const activeRenewal = config !== null
 
-  const allLocs = [
-    { key: 'MEDICAL' },
-    { key: 'DENTAL'  },
-    { key: 'VISION'  },
-  ]
-
-  const getLocConfig = (key) => config?.find((l) => l.key === key)
-
-  const renewingLocs = activeRenewal
-    ? config.filter((l) => l.selected)
+  // Flatten all selected carriers across all LOCs
+  const allSelectedCarriers = activeRenewal
+    ? config.flatMap((loc) => (loc.carriers || []).filter((c) => c.selected).map((c) => ({ ...c, locKey: loc.key })))
     : []
-  const skippedLocs = activeRenewal
-    ? config.filter((l) => !l.selected)
-    : []
+
+  const renewingLocCount = activeRenewal
+    ? config.filter((l) => l.carriers?.some((c) => c.selected)).length
+    : 0
+
+  // Merge config LOCs into ALL_LOCS (for added LOCs like Worksite/Life&Disability)
+  const displayLocs = ALL_LOCS.map((loc) => {
+    const cfgLoc = config?.find((l) => l.key === loc.key)
+    return {
+      ...loc,
+      carriers: loc.carriers.map((c) => {
+        const cfgCarrier = cfgLoc?.carriers?.find((cc) => cc.key === c.key)
+        return { ...c, selected: cfgCarrier?.selected ?? false, effectiveDate: cfgCarrier?.effectiveDate ?? null }
+      }),
+    }
+  })
 
   return (
-    <div style={{ maxWidth: 860, margin: '0 auto' }}>
+    <div style={{ maxWidth: 900, margin: '0 auto' }}>
 
       {/* Breadcrumb */}
       <div style={{ marginBottom: 28 }}>
         <Text type="secondary" style={{ fontSize: 13 }}>
-          Apex Solutions Inc &nbsp;›&nbsp; Renewals &nbsp;›&nbsp;{' '}
-          <Text strong style={{ color: '#1a2332' }}>Renewal Cycles</Text>
+          Apex Solutions Inc &nbsp;›&nbsp; Renewals &nbsp;›&nbsp;
+          <Text strong style={{ color: '#1a2332' }}>Manage Renewals</Text>
         </Text>
       </div>
 
       {/* Page header */}
-      <div style={{
-        display: 'flex', justifyContent: 'space-between',
-        alignItems: 'flex-start', marginBottom: 28,
-      }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
         <div>
-          <Title level={3} style={{ marginBottom: 4 }}>Renewal Cycles</Title>
+          <Title level={3} style={{ marginBottom: 4 }}>Manage Renewals</Title>
           <Text type="secondary" style={{ fontSize: 14 }}>
-            Track each Line of Coverage's renewal cycle independently.
+            Track each carrier's renewal cycle independently across all Lines of Coverage.
           </Text>
         </div>
         <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={onStartRenewal}
+          type="primary" icon={<PlusOutlined />} onClick={onStartRenewal}
           style={{ background: '#1a2332', borderColor: '#1a2332', fontWeight: 600 }}
         >
           Start New Renewal
         </Button>
       </div>
 
-      {/* Summary stat row */}
-      <div style={{
-        display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 32,
-      }}>
+      {/* Summary stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 32 }}>
         {[
           {
-            label: 'LOCs In Active Renewal',
-            value: renewingLocs.length,
+            label: 'Carriers in Active Renewal',
+            value: allSelectedCarriers.length,
             color: '#1a56db',
-            sub: renewingLocs.length > 0
-              ? renewingLocs.map((l) => LOC_META[l.key].label).join(', ')
+            sub: allSelectedCarriers.length > 0
+              ? allSelectedCarriers.map((c) => c.name).join(', ')
               : 'None',
           },
           {
-            label: 'Not Renewing This Cycle',
-            value: skippedLocs.length,
-            color: '#6b7280',
-            sub: skippedLocs.length > 0
-              ? skippedLocs.map((l) => LOC_META[l.key].label).join(', ')
-              : activeRenewal ? 'None' : '—',
-          },
-          {
-            label: 'Current Renewal Stage',
-            value: activeRenewal ? 'Offers' : '—',
-            color: '#f59e0b',
-            sub: activeRenewal ? 'Collecting carrier offers' : 'No active renewal',
-            small: true,
+            label: 'LOCs in Active Renewal',
+            value: renewingLocCount,
+            color: '#0e9f6e',
+            sub: activeRenewal
+              ? config.filter((l) => l.carriers?.some((c) => c.selected)).map((l) => LOC_META[l.key]?.label || l.label).join(', ') || 'None'
+              : '—',
           },
         ].map((stat) => (
           <div key={stat.label} style={{
             background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8,
             padding: '16px 20px', borderLeft: `3px solid ${stat.color}`,
           }}>
-            <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
-              {stat.label}
-            </Text>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-              <Text style={{
-                fontSize: stat.small ? 16 : 28, fontWeight: 700,
-                color: stat.color, lineHeight: 1,
-              }}>
+            <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>{stat.label}</Text>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+              <Text style={{ fontSize: 26, fontWeight: 700, color: stat.color, lineHeight: 1 }}>
                 {stat.value}
               </Text>
               <Text type="secondary" style={{ fontSize: 12 }}>{stat.sub}</Text>
@@ -183,152 +183,174 @@ export default function RenewalCyclesDashboard({ config, onBack, onStartRenewal 
 
       {/* LOC cards */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {allLocs.map((loc) => {
-          const meta      = LOC_META[loc.key]
-          const cfg       = getLocConfig(loc.key)
-          const inRenewal = activeRenewal && cfg?.selected
+        {displayLocs.map((loc) => {
+          const meta          = LOC_META[loc.key]
+          const anySelected   = loc.carriers.some((c) => c.selected)
+          const selectedCarriers = loc.carriers.filter((c) => c.selected)
+          const unselectedCarriers = loc.carriers.filter((c) => !c.selected)
 
           return (
             <div key={loc.key} style={{
               background: '#fff',
-              border: `1px solid ${inRenewal ? meta.hex + '40' : '#e5e7eb'}`,
-              borderLeft: `4px solid ${inRenewal ? meta.hex : '#d1d5db'}`,
+              border: `1px solid ${anySelected ? meta.hex + '40' : '#e5e7eb'}`,
+              borderLeft: `4px solid ${anySelected ? meta.hex : '#d1d5db'}`,
               borderRadius: 10, overflow: 'hidden',
             }}>
               {/* Card header */}
               <div style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 padding: '16px 24px',
-                background: inRenewal ? meta.bg : '#fafafa',
+                background: anySelected ? meta.bg : '#fafafa',
                 borderBottom: '1px solid #f3f4f6',
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <div style={{
                     width: 36, height: 36, borderRadius: 8,
-                    background: inRenewal ? meta.hex + '20' : '#f3f4f6',
+                    background: anySelected ? meta.hex + '20' : '#f3f4f6',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: inRenewal ? meta.hex : '#9ca3af', fontSize: 16,
+                    color: anySelected ? meta.hex : '#9ca3af', fontSize: 16,
                   }}>
                     {meta.icon}
                   </div>
                   <div>
-                    <Text style={{ fontWeight: 700, fontSize: 15, color: '#111827' }}>
-                      {meta.label}
-                    </Text>
+                    <Text style={{ fontWeight: 700, fontSize: 15, color: '#111827' }}>{meta.label}</Text>
                     <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
-                      {loc.key === 'MEDICAL' && 'BSC PPO Gold 2026 — Blue Shield of California'}
-                      {loc.key === 'DENTAL'  && 'Delta Dental PPO 2026 — Delta Dental'}
-                      {loc.key === 'VISION'  && 'VSP Vision Plan 2026 — VSP'}
+                      {loc.carriers.length} carrier{loc.carriers.length > 1 ? 's' : ''}
+                      {anySelected && ` · ${selectedCarriers.length} in renewal`}
                     </Text>
                   </div>
                 </div>
-                {inRenewal ? (
-                  <Tag color="blue" style={{ borderRadius: 10, fontSize: 12, padding: '2px 10px' }}>
-                    In Renewal
-                  </Tag>
-                ) : activeRenewal ? (
-                  <Tag
-                    icon={<SyncOutlined />}
-                    style={{ borderRadius: 10, fontSize: 12, padding: '2px 10px', color: '#6b7280', borderColor: '#d1d5db' }}
-                  >
-                    Not Renewing This Cycle
-                  </Tag>
-                ) : (
-                  <Tag style={{ borderRadius: 10, fontSize: 12, padding: '2px 10px', color: '#9ca3af' }}>
-                    No Active Renewal
-                  </Tag>
-                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  {anySelected ? (
+                    <>
+                      <Tag color="blue" style={{ borderRadius: 10, fontSize: 12, padding: '2px 10px' }}>
+                        In Renewal
+                      </Tag>
+                      <Button
+                        size="small" type="primary"
+                        icon={<ArrowRightOutlined />}
+                        onClick={onViewCarrierOffers}
+                        style={{ background: '#1a2332', borderColor: '#1a2332', fontWeight: 600, fontSize: 12 }}
+                      >
+                        View Carrier Offers
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Tag icon={<SyncOutlined />} style={{ borderRadius: 10, fontSize: 12, padding: '2px 10px', color: '#6b7280', borderColor: '#d1d5db' }}>
+                        Renewal Not Started
+                      </Tag>
+                      <Button
+                        size="small"
+                        icon={<PlusOutlined />}
+                        onClick={onStartRenewal}
+                        style={{ fontWeight: 600, fontSize: 12 }}
+                      >
+                        Start Renewal
+                      </Button>
+                    </>
+                  )}
+                </div>
               </div>
 
               {/* Card body */}
               <div style={{ padding: '20px 24px' }}>
-                {inRenewal ? (
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 24 }}>
-                    {/* Left: cycle details */}
-                    <div style={{ flex: 1 }}>
-                      <Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>
-                        Current Cycle
-                      </Text>
-                      <div style={{ marginTop: 8, display: 'flex', gap: 24 }}>
-                        <div>
-                          <Text type="secondary" style={{ fontSize: 11 }}>Effective Date</Text>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                            <CalendarOutlined style={{ color: meta.hex, fontSize: 12 }} />
-                            <Text strong style={{ fontSize: 13 }}>
-                              {cfg.effectiveDate?.format('MM/DD/YYYY')}
-                            </Text>
-                          </div>
-                        </div>
-                        <div>
-                          <Text type="secondary" style={{ fontSize: 11 }}>End Date</Text>
-                          <div style={{ marginTop: 2 }}>
-                            <Text style={{ fontSize: 13, color: '#6b7280' }}>
-                              {cfg.effectiveDate
-                                ? cfg.effectiveDate.add(1, 'year').subtract(1, 'day').format('MM/DD/YYYY')
-                                : '—'}
-                            </Text>
-                          </div>
-                        </div>
-                        <div>
-                          <Text type="secondary" style={{ fontSize: 11 }}>Offers</Text>
-                          <div style={{ marginTop: 2 }}>
-                            <Text style={{ fontSize: 13, color: '#6b7280' }}>0 offers</Text>
-                          </div>
-                        </div>
-                      </div>
+
+                {anySelected ? (
+                  <>
+                    {/* Column headers */}
+                    <div style={{
+                      display: 'grid', gridTemplateColumns: '1fr 160px 180px 120px',
+                      gap: 12, padding: '0 0 8px',
+                      borderBottom: '1px solid #f3f4f6', marginBottom: 4,
+                    }}>
+                      {['Carrier', 'Effective Date', 'Stage', 'Status'].map((h) => (
+                        <Text key={h} style={{ fontSize: 11, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                          {h}
+                        </Text>
+                      ))}
                     </div>
 
-                    {/* Right: stage progress */}
-                    <div>
-                      <Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600, display: 'block', marginBottom: 10 }}>
-                        Stage
-                      </Text>
-                      <StageProgress currentStage={0} />
-                    </div>
-                  </div>
+                    {/* Selected carrier rows */}
+                    {selectedCarriers.map((carrier) => (
+                      <div key={carrier.key} style={{
+                        display: 'grid', gridTemplateColumns: '1fr 160px 180px 120px',
+                        gap: 12, padding: '10px 0', alignItems: 'center',
+                        borderBottom: '1px solid #f9fafb',
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ width: 7, height: 7, borderRadius: '50%', background: meta.hex, flexShrink: 0 }} />
+                          <Text style={{ fontWeight: 600, fontSize: 13, color: '#111827' }}>{carrier.name}</Text>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                          <CalendarOutlined style={{ color: meta.hex, fontSize: 12 }} />
+                          <Text style={{ fontSize: 13, fontWeight: 600 }}>
+                            {carrier.effectiveDate?.format('MM/DD/YYYY') ?? '—'}
+                          </Text>
+                        </div>
+                        <StageProgress currentStage={0} />
+                        <Tag color="blue" style={{ borderRadius: 8, fontSize: 11, width: 'fit-content' }}>In Renewal</Tag>
+                      </div>
+                    ))}
+
+                    {/* Unselected carriers in same LOC (not renewing) */}
+                    {unselectedCarriers.length > 0 && unselectedCarriers.map((carrier) => (
+                      <div key={carrier.key} style={{
+                        display: 'grid', gridTemplateColumns: '1fr 160px 180px 120px',
+                        gap: 12, padding: '10px 0', alignItems: 'center',
+                        borderBottom: '1px solid #f9fafb', opacity: 0.55,
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#d1d5db', flexShrink: 0 }} />
+                          <Text style={{ fontSize: 13, color: '#9ca3af' }}>{carrier.name}</Text>
+                        </div>
+                        <Text style={{ fontSize: 13, color: '#9ca3af' }}>—</Text>
+                        <div />
+                        <Tag style={{ borderRadius: 8, fontSize: 11, color: '#9ca3af', borderColor: '#e5e7eb', width: 'fit-content' }}>
+                          Renewal Not Started
+                        </Tag>
+                      </div>
+                    ))}
+                  </>
                 ) : (
-                  <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
                     <Text type="secondary" style={{ fontSize: 13 }}>
                       {activeRenewal
-                        ? 'This LOC is not included in the current renewal cycle. Current plans remain active and can be renewed in a future cycle.'
-                        : 'No active renewal cycle. Start a new renewal to include this LOC.'}
+                        ? 'No carriers in renewal for this LOC. Existing plans will be copied as-is to the new plan year when AFP is completed.'
+                        : 'No active renewal. Use the Start Renewal button above to begin.'}
                     </Text>
                   </div>
                 )}
 
                 {/* Previous cycle */}
                 <Divider style={{ margin: '16px 0 12px' }} />
-                <div>
-                  <Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>
-                    Previous Cycle
-                  </Text>
-                  <div style={{
-                    marginTop: 8, display: 'flex', alignItems: 'center', gap: 24,
-                    padding: '10px 14px', background: '#f9fafb', borderRadius: 6,
-                  }}>
-                    <div>
-                      <Text type="secondary" style={{ fontSize: 11 }}>Effective</Text>
-                      <div style={{ marginTop: 1 }}>
-                        <Text style={{ fontSize: 13 }}>{PREV_CYCLE.effectiveDate}</Text>
-                        <Text type="secondary" style={{ fontSize: 12 }}> – {PREV_CYCLE.endDate}</Text>
+                <Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600, display: 'block', marginBottom: 8 }}>
+                  Previous Cycle
+                </Text>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {loc.carriers.map((carrier) => {
+                    const prev = PREV_CYCLE[`${loc.key}.${carrier.key}`]
+                    if (!prev) return null
+                    return (
+                      <div key={carrier.key} style={{
+                        display: 'flex', alignItems: 'center', gap: 16,
+                        padding: '8px 14px', background: '#f9fafb', borderRadius: 6,
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 140 }}>
+                          <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#9ca3af', flexShrink: 0 }} />
+                          <Text style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>{carrier.name}</Text>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <CalendarOutlined style={{ color: '#9ca3af', fontSize: 11 }} />
+                          <Text style={{ fontSize: 12, color: '#6b7280' }}>Eff. {prev.effectiveDate}</Text>
+                        </div>
+                        <Text style={{ fontSize: 12, color: '#9ca3af' }}>AFP completed {prev.completedDate}</Text>
+                        <Tag icon={<CheckCircleFilled />} color="success" style={{ borderRadius: 8, fontSize: 11, marginLeft: 'auto' }}>
+                          Complete
+                        </Tag>
                       </div>
-                    </div>
-                    <div>
-                      <Text type="secondary" style={{ fontSize: 11 }}>AFP Completed</Text>
-                      <div style={{ marginTop: 1 }}>
-                        <Text style={{ fontSize: 13, color: '#6b7280' }}>{PREV_CYCLE.completedDate}</Text>
-                      </div>
-                    </div>
-                    <div style={{ marginLeft: 'auto' }}>
-                      <Tag
-                        icon={<CheckCircleFilled />}
-                        color="success"
-                        style={{ borderRadius: 10, fontSize: 11 }}
-                      >
-                        AFP Complete
-                      </Tag>
-                    </div>
-                  </div>
+                    )
+                  })}
                 </div>
               </div>
             </div>
@@ -336,17 +358,6 @@ export default function RenewalCyclesDashboard({ config, onBack, onStartRenewal 
         })}
       </div>
 
-      {/* Back link */}
-      <div style={{ marginTop: 32, textAlign: 'center' }}>
-        <Button
-          type="link"
-          icon={<ArrowLeftOutlined />}
-          onClick={onBack}
-          style={{ color: '#6b7280', fontWeight: 500 }}
-        >
-          Back to Start Renewal
-        </Button>
-      </div>
     </div>
   )
 }

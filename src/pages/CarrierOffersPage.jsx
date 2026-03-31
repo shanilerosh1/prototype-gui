@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import {
-  Typography, Button, Tag, Tooltip, Select, Modal, message, Divider, Layout, Menu,
+  Typography, Button, Tag, Tooltip, Modal, message, Divider, Layout, Menu, Dropdown,
 } from 'antd'
 import {
   MedicineBoxOutlined, SmileOutlined, EyeOutlined,
@@ -47,10 +47,11 @@ const NAV_ITEMS = [
   ]},
 ]
 
-export default function CarrierOffersPage({ config, onCompleteAFP, onGoToEffectiveDates }) {
+export default function CarrierOffersPage({ config, onCompleteAFP, onGoToEffectiveDates, onGoToRenewalCycles }) {
   const [addOfferModal, setAddOfferModal] = useState(null)
 
-  const getLocConfig = (key) => config.find((l) => l.key === key)
+  const hasActiveRenewal = config?.some((l) => l.selected)
+  const getLocConfig = (key) => config?.find((l) => l.key === key)
 
   const allLocs = [
     { key: 'MEDICAL', label: 'Medical' },
@@ -58,10 +59,59 @@ export default function CarrierOffersPage({ config, onCompleteAFP, onGoToEffecti
     { key: 'VISION',  label: 'Vision'  },
   ]
 
-  const handleAddOffer = (loc) => {
+  // Build effective date filter options from config — one per selected carrier
+  const effectiveDateOptions = [
+    { value: 'all', label: 'All' },
+    ...allLocs.flatMap((loc) => {
+      const cfg = getLocConfig(loc.key)
+      if (!cfg?.selected) return []
+      return (cfg.carriers || [])
+        .filter((c) => c.selected && c.effectiveDate)
+        .map((c) => ({
+          value: `${loc.key}.${c.key}`,
+          label: `${c.name} - ${loc.label} - ${c.effectiveDate.format('M/D/YYYY')}`,
+          locKey: loc.key,
+          carrierKey: c.key,
+        }))
+    }),
+  ]
+
+  // Default to the first carrier's effective date option (not "All") when a renewal is active
+  const defaultFilter = effectiveDateOptions.find((o) => o.value !== 'all')?.value ?? 'all'
+  const [effectiveDateFilter, setEffectiveDateFilter] = useState(defaultFilter)
+
+  // Build carrier-level table rows (one row per carrier for in-renewal LOCs)
+  const tableRows = allLocs.flatMap((loc) => {
+    const cfg = getLocConfig(loc.key)
+    const meta = LOC_META[loc.key]
+    if (!cfg?.selected) {
+      return [{ type: 'not-renewing', loc, cfg, meta, id: loc.key }]
+    }
+    const selectedCarriers = (cfg.carriers || []).filter((c) => c.selected)
+    if (selectedCarriers.length === 0) {
+      return [{ type: 'not-renewing', loc, cfg, meta, id: loc.key }]
+    }
+    return selectedCarriers.map((carrier) => ({
+      type: 'carrier',
+      loc,
+      cfg,
+      meta,
+      carrier,
+      id: `${loc.key}.${carrier.key}`,
+    }))
+  })
+
+  // Apply filter
+  const filteredRows = effectiveDateFilter === 'all'
+    ? tableRows
+    : tableRows.filter((row) =>
+        row.type === 'not-renewing' ? false : row.id === effectiveDateFilter
+      )
+
+  const handleAddOffer = (loc, carrier) => {
     const cfg = getLocConfig(loc.key)
     if (!cfg?.selected) return
-    setAddOfferModal({ ...loc, ...cfg })
+    setAddOfferModal({ ...loc, effectiveDate: carrier?.effectiveDate, carrierName: carrier?.name })
   }
 
   return (
@@ -110,6 +160,7 @@ export default function CarrierOffersPage({ config, onCompleteAFP, onGoToEffecti
               { key: 'documents',   label: 'Documents',   icon: <FileOutlined /> },
             ]},
             { key: 'g4', label: 'RENEWALS', type: 'group', children: [
+              { key: 'renewal-cycles', label: 'Manage Renewals', icon: <BarChartOutlined />, onClick: onGoToRenewalCycles },
               { key: 'carrier-offers', label: 'Carrier Offers', icon: <ReloadOutlined /> },
               { key: 'proposals',      label: 'Proposals',      icon: <FileTextOutlined /> },
             ]},
@@ -120,27 +171,45 @@ export default function CarrierOffersPage({ config, onCompleteAFP, onGoToEffecti
       {/* Main content */}
       <Content style={{ padding: '32px 40px', background: '#fff', minHeight: '100vh' }}>
 
-        {/* AFP banner */}
-        <div style={{
-          background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8,
-          padding: '12px 20px', marginBottom: 28,
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <CheckCircleOutlined style={{ color: '#16a34a', fontSize: 16 }} />
-            <Text style={{ fontSize: 13, color: '#166534' }}>
-              <Text strong style={{ color: '#166534' }}>Renewal in progress.</Text>
-              {' '}Once offers and proposals are finalized, complete AFP to create the new plan year.
-            </Text>
+        {/* Banner — AFP in progress or no renewal yet */}
+        {hasActiveRenewal ? (
+          <div style={{
+            background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8,
+            padding: '12px 20px', marginBottom: 28,
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <CheckCircleOutlined style={{ color: '#16a34a', fontSize: 16 }} />
+              <Text style={{ fontSize: 13, color: '#166534' }}>
+                <Text strong style={{ color: '#166534' }}>Renewal in progress.</Text>
+                {' '}Once offers and proposals are finalized, complete AFP to create the new plan year.
+              </Text>
+            </div>
+            <Button
+              type="primary"
+              onClick={onCompleteAFP}
+              style={{ background: '#1a2332', borderColor: '#1a2332', fontWeight: 600, flexShrink: 0 }}
+            >
+              Complete AFP
+            </Button>
           </div>
-          <Button
-            type="primary"
-            onClick={onCompleteAFP}
-            style={{ background: '#1a2332', borderColor: '#1a2332', fontWeight: 600, flexShrink: 0 }}
-          >
-            Complete AFP
-          </Button>
-        </div>
+        ) : (
+          <div style={{
+            background: '#f8faff', border: '1px solid #dbeafe', borderRadius: 8,
+            padding: '12px 20px', marginBottom: 28,
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
+          }}>
+            <Text style={{ fontSize: 13, color: '#374151' }}>
+              No active renewal for this employer.
+            </Text>
+            <Button
+              onClick={onGoToRenewalCycles}
+              style={{ fontWeight: 600, flexShrink: 0 }}
+            >
+              Go to Manage Renewals to Start Renewal
+            </Button>
+          </div>
+        )}
 
         {/* Header row */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
@@ -149,19 +218,31 @@ export default function CarrierOffersPage({ config, onCompleteAFP, onGoToEffecti
               Carrier Offers
             </Text>
             {/* Filters */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Text style={{ fontSize: 13, color: '#6b7280' }}>Plan Year:</Text>
-                <Button size="small" type="link" style={{ padding: 0, fontWeight: 600, color: '#1a56db' }}>
-                  Upcoming <DownOutlined style={{ fontSize: 10 }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <Text style={{ fontSize: 13, color: '#6b7280' }}>Effective Dates:</Text>
+              <Dropdown
+                trigger={['click']}
+                menu={{
+                  items: effectiveDateOptions.map((opt) => ({
+                    key: opt.value,
+                    label: opt.label,
+                    icon: opt.value === effectiveDateFilter
+                      ? <span style={{ color: '#1a56db', marginRight: 4 }}>✓</span>
+                      : <span style={{ marginRight: 4, display: 'inline-block', width: 14 }} />,
+                  })),
+                  onClick: ({ key }) => setEffectiveDateFilter(key),
+                  style: { minWidth: 280 },
+                }}
+              >
+                <Button
+                  type="link"
+                  size="small"
+                  style={{ padding: '0 4px', fontWeight: 600, color: '#1a56db', fontSize: 13 }}
+                >
+                  {effectiveDateOptions.find((o) => o.value === effectiveDateFilter)?.label ?? 'All'}
+                  {' '}<DownOutlined style={{ fontSize: 10 }} />
                 </Button>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Text style={{ fontSize: 13, color: '#6b7280' }}>Effective Dates:</Text>
-                <Button size="small" type="link" style={{ padding: 0, fontWeight: 600, color: '#1a56db' }}>
-                  All <DownOutlined style={{ fontSize: 10 }} />
-                </Button>
-              </div>
+              </Dropdown>
             </div>
           </div>
 
@@ -244,43 +325,47 @@ export default function CarrierOffersPage({ config, onCompleteAFP, onGoToEffecti
             </div>
 
             {/* Rows */}
-            {allLocs.map((loc, i) => {
-              const cfg = getLocConfig(loc.key)
-              const meta = LOC_META[loc.key]
-              const isLast = i === allLocs.length - 1
-              const isCarrying = !cfg?.selected
+            {filteredRows.map((row, i) => {
+              const { loc, meta, carrier } = row
+              const isNotRenewing = row.type === 'not-renewing'
+              const isLast = i === filteredRows.length - 1
+              const effDate = carrier?.effectiveDate
 
               return (
                 <div
-                  key={loc.key}
+                  key={row.id}
                   style={{
                     display: 'grid',
                     gridTemplateColumns: '220px 1px 1fr 200px 140px 160px',
                     borderBottom: isLast ? 'none' : '1px solid #f3f4f6',
                     alignItems: 'center',
-                    background: isCarrying ? '#fafafa' : '#fff',
-                    opacity: isCarrying ? 0.7 : 1,
+                    background: isNotRenewing ? '#fafafa' : '#fff',
+                    opacity: isNotRenewing ? 0.7 : 1,
                     minHeight: 70,
                   }}
                 >
                   {/* Benefit type cell */}
-                  <div style={{ padding: '16px', display: 'flex', alignItems: 'flex-start', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ padding: '16px', display: 'flex', alignItems: 'flex-start', flexDirection: 'column', gap: 4 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ color: isCarrying ? '#9ca3af' : meta.hex, fontSize: 16 }}>
+                      <span style={{ color: isNotRenewing ? '#9ca3af' : meta.hex, fontSize: 16 }}>
                         {meta.icon}
                       </span>
-                      <Text style={{ fontWeight: 600, fontSize: 14, color: isCarrying ? '#9ca3af' : '#111827' }}>
-                        {loc.label}
-                      </Text>
+                      <div>
+                        <Text style={{ fontWeight: 600, fontSize: 14, color: isNotRenewing ? '#9ca3af' : '#111827', display: 'block' }}>
+                          {loc.label}
+                        </Text>
+                        {!isNotRenewing && (
+                          <Text style={{ fontSize: 12, color: '#6b7280' }}>{carrier.name}</Text>
+                        )}
+                      </div>
                     </div>
-                    {/* Effective date or carry forward tag */}
-                    {isCarrying ? (
+                    {isNotRenewing ? (
                       <Tag icon={<SyncOutlined />} style={{ fontSize: 11, borderRadius: 10, color: '#6b7280', borderColor: '#d1d5db' }}>
                         Not Renewing
                       </Tag>
                     ) : (
                       <Tag icon={<CalendarOutlined />} color="blue" style={{ fontSize: 11, borderRadius: 10 }}>
-                        Eff. {cfg?.effectiveDate?.format('MM/DD/YYYY')}
+                        Eff. {effDate?.format('MM/DD/YYYY')}
                       </Tag>
                     )}
                   </div>
@@ -290,16 +375,15 @@ export default function CarrierOffersPage({ config, onCompleteAFP, onGoToEffecti
 
                   {/* Carrier / offer name + actions */}
                   <div style={{ padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    {isCarrying ? (
+                    {isNotRenewing ? (
                       <Text style={{ color: '#9ca3af', fontSize: 13, fontStyle: 'italic' }}>
                         No renewal — current plans remain active
                       </Text>
                     ) : (
                       <Text style={{ color: '#9ca3af', fontSize: 13 }}>Currently no offers</Text>
                     )}
-                    {/* Add offer button */}
-                    {isCarrying ? (
-                      <Tooltip title={`${loc.label} is not being renewed this cycle. Offers cannot be added for LOCs not included in this renewal.`}>
+                    {isNotRenewing ? (
+                      <Tooltip title={`${loc.label} is not being renewed this cycle.`}>
                         <Button size="small" disabled icon={<PlusOutlined />} style={{ marginLeft: 12 }}>
                           Add Offer
                         </Button>
@@ -308,7 +392,7 @@ export default function CarrierOffersPage({ config, onCompleteAFP, onGoToEffecti
                       <Button
                         size="small" type="primary" ghost
                         icon={<PlusOutlined />}
-                        onClick={() => handleAddOffer(loc)}
+                        onClick={() => handleAddOffer(loc, carrier)}
                         style={{ marginLeft: 12, borderColor: meta.hex, color: meta.hex }}
                       >
                         Add Offer
@@ -353,12 +437,17 @@ export default function CarrierOffersPage({ config, onCompleteAFP, onGoToEffecti
         ]}
       >
         <div style={{ padding: '8px 0' }}>
-          <Tag color="blue" icon={<CalendarOutlined />} style={{ marginBottom: 12 }}>
-            Effective: {addOfferModal?.effectiveDate?.format('MM/DD/YYYY')}
-          </Tag>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+            {addOfferModal?.carrierName && (
+              <Tag style={{ borderRadius: 10, fontSize: 12 }}>{addOfferModal.carrierName}</Tag>
+            )}
+            <Tag color="blue" icon={<CalendarOutlined />} style={{ borderRadius: 10 }}>
+              Effective: {addOfferModal?.effectiveDate?.format('MM/DD/YYYY')}
+            </Tag>
+          </div>
           <Text type="secondary" style={{ display: 'block', fontSize: 13 }}>
             In the real flow, this opens the Add Offer wizard for <Text strong>{addOfferModal?.label}</Text> with
-            carrier selection, plan upload, and rate entry steps.
+            plan upload and rate entry steps.
           </Text>
         </div>
       </Modal>

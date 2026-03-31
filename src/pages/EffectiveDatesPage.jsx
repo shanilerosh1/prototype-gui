@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { Typography, Tag, Layout, Menu, Tabs, Tooltip } from 'antd'
+import { Typography, Tag, Layout, Menu } from 'antd'
 import {
   DashboardOutlined, InfoCircleOutlined, UnorderedListOutlined,
   BankOutlined, FileTextOutlined, TeamOutlined, CreditCardOutlined,
   AuditOutlined, FileOutlined, BarChartOutlined, ReloadOutlined,
   MedicineBoxOutlined, SmileOutlined, EyeOutlined,
+  ShopOutlined, SafetyCertificateOutlined,
   CheckCircleFilled, ClockCircleOutlined, MinusCircleOutlined,
   CalendarOutlined,
 } from '@ant-design/icons'
@@ -13,164 +14,114 @@ const { Text } = Typography
 const { Sider, Content } = Layout
 
 const LOC_META = {
-  MEDICAL: { icon: <MedicineBoxOutlined />, hex: '#1a56db', bg: '#eff6ff', label: 'Medical', plan: 'BSC PPO Gold — Blue Shield of California' },
-  DENTAL:  { icon: <SmileOutlined />,        hex: '#0e9f6e', bg: '#f0fdf4', label: 'Dental',  plan: 'Delta Dental PPO — Delta Dental' },
-  VISION:  { icon: <EyeOutlined />,          hex: '#7e3af2', bg: '#faf5ff', label: 'Vision',  plan: 'VSP Vision Plan — VSP' },
+  MEDICAL:          { icon: <MedicineBoxOutlined />,       hex: '#1a56db', bg: '#eff6ff', label: 'Medical'          },
+  DENTAL:           { icon: <SmileOutlined />,             hex: '#0e9f6e', bg: '#f0fdf4', label: 'Dental'           },
+  VISION:           { icon: <EyeOutlined />,               hex: '#7e3af2', bg: '#faf5ff', label: 'Vision'           },
+  WORKSITE:         { icon: <ShopOutlined />,              hex: '#d97706', bg: '#fffbeb', label: 'Worksite'         },
+  LIFE_DISABILITY:  { icon: <SafetyCertificateOutlined />, hex: '#dc2626', bg: '#fff1f2', label: 'Life & Disability' },
 }
 
-// Historical effective dates per LOC (hardcoded for prototype)
-const HISTORY = {
-  MEDICAL:  [{ date: '01/01/2025', status: 'expired' }, { date: '01/01/2026', status: 'active' }],
-  DENTAL:   [{ date: '01/01/2025', status: 'expired' }, { date: '01/01/2026', status: 'active' }],
-  VISION:   [{ date: '01/01/2025', status: 'expired' }, { date: '01/01/2026', status: 'active' }],
+// All LOCs and their carriers (system-wide)
+const ALL_LOCS = [
+  { key: 'MEDICAL',         carriers: [{ key: 'ANTHEM', name: 'Anthem Blue Cross' }, { key: 'AETNA', name: 'Aetna' }] },
+  { key: 'DENTAL',          carriers: [{ key: 'DELTA',  name: 'Delta Dental'      }] },
+  { key: 'VISION',          carriers: [{ key: 'VSP',    name: 'VSP'               }] },
+  { key: 'LIFE_DISABILITY', carriers: [{ key: 'SUN',    name: 'Sun Life'          }] },
+  { key: 'WORKSITE',        carriers: [{ key: 'AFLAC',  name: 'Aflac'             }] },
+]
+
+// Historical effective dates per carrier
+const CARRIER_HISTORY = {
+  'MEDICAL.ANTHEM':       [{ date: '01/01/2025', status: 'expired' }, { date: '01/01/2026', status: 'active' }],
+  'MEDICAL.AETNA':        [{ date: '01/01/2025', status: 'expired' }, { date: '01/01/2026', status: 'active' }],
+  'DENTAL.DELTA':         [{ date: '01/01/2025', status: 'expired' }, { date: '01/01/2026', status: 'active' }],
+  'VISION.VSP':           [{ date: '01/01/2025', status: 'expired' }, { date: '01/01/2026', status: 'active' }],
+  'LIFE_DISABILITY.SUN':  [{ date: '01/01/2025', status: 'expired' }, { date: '01/01/2026', status: 'active' }],
+  'WORKSITE.AFLAC':       [{ date: '01/01/2026', status: 'active' }],
 }
 
 const STATUS_CONFIG = {
-  upcoming: {
-    label: 'Upcoming',
-    color: '#1a56db',
-    bg: '#eff6ff',
-    border: '#bfdbfe',
-    icon: <ClockCircleOutlined />,
-    note: 'Set via active renewal',
-  },
-  active: {
-    label: 'Active',
-    color: '#16a34a',
-    bg: '#f0fdf4',
-    border: '#bbf7d0',
-    icon: <CheckCircleFilled />,
-    note: 'Currently active',
-  },
-  expired: {
-    label: 'Expired',
-    color: '#9ca3af',
-    bg: '#f9fafb',
-    border: '#e5e7eb',
-    icon: <MinusCircleOutlined />,
-    note: 'Superseded by next effective date',
-  },
+  upcoming: { label: 'Upcoming', color: '#1a56db', bg: '#eff6ff', border: '#bfdbfe', icon: <ClockCircleOutlined />, note: 'Set via active renewal' },
+  active:   { label: 'Active',   color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0', icon: <CheckCircleFilled />,  note: 'Currently active'       },
+  expired:  { label: 'Expired',  color: '#9ca3af', bg: '#f9fafb', border: '#e5e7eb', icon: <MinusCircleOutlined />,note: 'Superseded by next effective date' },
 }
 
-function EffectiveDateRow({ date, status, note, isLast }) {
+function DateRow({ date, status, note, isLast }) {
   const cfg = STATUS_CONFIG[status]
   return (
     <div style={{
-      display: 'grid',
-      gridTemplateColumns: '120px 160px 1fr',
-      alignItems: 'center',
-      padding: '14px 0',
+      display: 'grid', gridTemplateColumns: '110px 150px 1fr',
+      alignItems: 'center', padding: '11px 0',
       borderBottom: isLast ? 'none' : '1px solid #f3f4f6',
       gap: 16,
     }}>
-      {/* Status badge */}
-      <div>
-        <Tag
-          icon={cfg.icon}
-          style={{
-            color: cfg.color, background: cfg.bg,
-            border: `1px solid ${cfg.border}`,
-            borderRadius: 20, fontSize: 12,
-            padding: '2px 10px', fontWeight: 600,
-          }}
-        >
-          {cfg.label}
-        </Tag>
-      </div>
-
-      {/* Effective date */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-        <CalendarOutlined style={{ color: cfg.color, fontSize: 13 }} />
-        <Text style={{
-          fontSize: 14,
-          fontWeight: status === 'active' ? 700 : 500,
-          color: status === 'expired' ? '#9ca3af' : '#111827',
-        }}>
+      <Tag icon={cfg.icon} style={{
+        color: cfg.color, background: cfg.bg, border: `1px solid ${cfg.border}`,
+        borderRadius: 20, fontSize: 11, padding: '2px 8px', fontWeight: 600, width: 'fit-content',
+      }}>
+        {cfg.label}
+      </Tag>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <CalendarOutlined style={{ color: cfg.color, fontSize: 12 }} />
+        <Text style={{ fontSize: 13, fontWeight: status === 'active' ? 700 : 500, color: status === 'expired' ? '#9ca3af' : '#111827' }}>
           {date}
         </Text>
       </div>
-
-      {/* Note */}
-      <Text style={{ fontSize: 12, color: '#9ca3af' }}>
-        {note || cfg.note}
-      </Text>
+      <Text style={{ fontSize: 12, color: '#9ca3af' }}>{note || cfg.note}</Text>
     </div>
   )
 }
 
-function LOCSection({ locKey, config }) {
-  const meta    = LOC_META[locKey]
-  const locCfg  = config?.find((l) => l.key === locKey)
-  const inRenewal = locCfg?.selected === true
+function CarrierSection({ locKey, carrier, configCarrier, locHex, isLast }) {
+  const inRenewal = configCarrier?.selected === true
 
-  // Build the full list of dates for this LOC: history + upcoming if in renewal
+  // Build rows: upcoming (from config) + history (most recent first)
   const rows = []
-
-  if (inRenewal && locCfg?.effectiveDate) {
-    rows.push({
-      date: locCfg.effectiveDate.format('MM/DD/YYYY'),
-      status: 'upcoming',
-      note: 'Set via active renewal',
-    })
+  if (inRenewal && configCarrier?.effectiveDate) {
+    rows.push({ date: configCarrier.effectiveDate.format('MM/DD/YYYY'), status: 'upcoming', note: 'Set via active renewal' })
   }
-
-  const history = [...(HISTORY[locKey] || [])].reverse() // most recent first
+  const history = [...(CARRIER_HISTORY[`${locKey}.${carrier.key}`] || [])].reverse()
   history.forEach((h) => rows.push(h))
 
   return (
-    <div style={{
-      border: '1px solid #e5e7eb',
-      borderLeft: `4px solid ${meta.hex}`,
-      borderRadius: 10, overflow: 'hidden',
-      marginBottom: 20,
-      background: '#fff',
-    }}>
-      {/* LOC header */}
+    <div style={{ borderBottom: isLast ? 'none' : '1px solid #f0f1f3' }}>
+      {/* Carrier sub-header */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '16px 24px',
-        background: inRenewal ? meta.bg : '#fafafa',
-        borderBottom: '1px solid #f3f4f6',
+        padding: '12px 24px',
+        background: inRenewal ? locHex + '05' : '#fafafa',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{
-            width: 34, height: 34, borderRadius: 8,
-            background: meta.hex + '20',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: meta.hex, fontSize: 16,
-          }}>
-            {meta.icon}
-          </div>
-          <div>
-            <Text style={{ fontWeight: 700, fontSize: 15, color: '#111827' }}>{meta.label}</Text>
-            <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>{meta.plan}</Text>
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ width: 7, height: 7, borderRadius: '50%', background: inRenewal ? locHex : '#d1d5db', flexShrink: 0 }} />
+          <Text style={{ fontWeight: 600, fontSize: 13, color: inRenewal ? '#111827' : '#6b7280' }}>
+            {carrier.name}
+          </Text>
         </div>
         {inRenewal
-          ? <Tag color="blue" style={{ borderRadius: 20, fontSize: 12, padding: '2px 10px' }}>In Renewal</Tag>
-          : <Tag style={{ borderRadius: 20, fontSize: 12, color: '#6b7280', borderColor: '#d1d5db' }}>Not in current renewal</Tag>
+          ? <Tag color="blue" style={{ borderRadius: 10, fontSize: 11 }}>In Renewal</Tag>
+          : <Tag style={{ borderRadius: 10, fontSize: 11, color: '#9ca3af', borderColor: '#e5e7eb' }}>No Active Renewal</Tag>
         }
       </div>
 
       {/* Column headers */}
       <div style={{
-        display: 'grid', gridTemplateColumns: '120px 160px 1fr',
-        gap: 16, padding: '8px 24px',
-        background: '#fafafa', borderBottom: '1px solid #f3f4f6',
+        display: 'grid', gridTemplateColumns: '110px 150px 1fr',
+        gap: 16, padding: '6px 24px',
+        background: '#fafafa', borderBottom: '1px solid #f3f4f6', borderTop: '1px solid #f3f4f6',
       }}>
-        <Text style={{ fontSize: 11, color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Status</Text>
-        <Text style={{ fontSize: 11, color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Effective Date</Text>
-        <Text style={{ fontSize: 11, color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Notes</Text>
+        {['Status', 'Effective Date', 'Notes'].map((h) => (
+          <Text key={h} style={{ fontSize: 11, color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            {h}
+          </Text>
+        ))}
       </div>
 
       {/* Date rows */}
       <div style={{ padding: '0 24px' }}>
         {rows.map((row, i) => (
-          <EffectiveDateRow
+          <DateRow
             key={`${row.date}-${row.status}`}
-            date={row.date}
-            status={row.status}
-            note={row.note}
+            date={row.date} status={row.status} note={row.note}
             isLast={i === rows.length - 1}
           />
         ))}
@@ -179,15 +130,81 @@ function LOCSection({ locKey, config }) {
   )
 }
 
+function LOCSection({ loc, config }) {
+  const meta    = LOC_META[loc.key]
+  const cfgLoc  = config?.find((l) => l.key === loc.key)
+  const anyInRenewal = loc.carriers.some((c) => cfgLoc?.carriers?.find((cc) => cc.key === c.key)?.selected)
+
+  return (
+    <div style={{
+      border: '1px solid #e5e7eb',
+      borderLeft: `4px solid ${anyInRenewal ? meta.hex : '#d1d5db'}`,
+      borderRadius: 10, overflow: 'hidden',
+      marginBottom: 24, background: '#fff',
+    }}>
+      {/* LOC header */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '16px 24px',
+        background: anyInRenewal ? meta.bg : '#fafafa',
+        borderBottom: '1px solid #f3f4f6',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{
+            width: 34, height: 34, borderRadius: 8,
+            background: anyInRenewal ? meta.hex + '20' : '#f0f0f0',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: anyInRenewal ? meta.hex : '#9ca3af', fontSize: 16,
+          }}>
+            {meta.icon}
+          </div>
+          <div>
+            <Text style={{ fontWeight: 700, fontSize: 15, color: '#111827' }}>{meta.label}</Text>
+            <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
+              {loc.carriers.length} carrier{loc.carriers.length > 1 ? 's' : ''}
+              {anyInRenewal && ` · ${loc.carriers.filter((c) => cfgLoc?.carriers?.find((cc) => cc.key === c.key)?.selected).length} in renewal`}
+            </Text>
+          </div>
+        </div>
+        {anyInRenewal
+          ? <Tag color="blue" style={{ borderRadius: 20, fontSize: 12, padding: '2px 10px' }}>In Renewal</Tag>
+          : <Tag style={{ borderRadius: 20, fontSize: 12, color: '#6b7280', borderColor: '#d1d5db' }}>Not in current renewal</Tag>
+        }
+      </div>
+
+      {/* Carrier sections */}
+      {loc.carriers.map((carrier, i) => {
+        const cfgCarrier = cfgLoc?.carriers?.find((cc) => cc.key === carrier.key)
+        return (
+          <CarrierSection
+            key={carrier.key}
+            locKey={loc.key}
+            carrier={carrier}
+            configCarrier={cfgCarrier}
+            locHex={meta.hex}
+            isLast={i === loc.carriers.length - 1}
+          />
+        )
+      })}
+    </div>
+  )
+}
+
 export default function EffectiveDatesPage({ config, onBack }) {
   const [activeTab, setActiveTab] = useState('effective-dates')
 
   const tabs = [
-    { key: 'employer-users',   label: 'Employer Users'  },
-    { key: 'effective-dates',  label: 'Effective Dates' },
-    { key: 'benefit-classes',  label: 'Benefit Classes' },
-    { key: 'basic-info',       label: 'Basic Info'      },
+    { key: 'employer-users',  label: 'Employer Users'  },
+    { key: 'effective-dates', label: 'Effective Dates' },
+    { key: 'benefit-classes', label: 'Benefit Classes' },
+    { key: 'basic-info',      label: 'Basic Info'      },
   ]
+
+  // Summary counts (carrier-level)
+  const totalCarriers = ALL_LOCS.reduce((sum, l) => sum + l.carriers.length, 0)
+  const carriersInRenewal = config
+    ? config.flatMap((l) => (l.carriers || []).filter((c) => c.selected)).length
+    : 0
 
   return (
     <Layout style={{ minHeight: '100vh', background: '#fff' }}>
@@ -197,23 +214,18 @@ export default function EffectiveDatesPage({ config, onBack }) {
           <Text style={{ fontSize: 11, color: '#9ca3af', display: 'block', marginBottom: 6 }}>
             Release Testing &gt; EMPLOYER
           </Text>
-          <div style={{
-            background: '#1a2332', color: '#fff', borderRadius: 4,
-            padding: '4px 12px', fontWeight: 700, fontSize: 13,
-            display: 'inline-block', marginBottom: 12,
-          }}>
+          <div style={{ background: '#1a2332', color: '#fff', borderRadius: 4, padding: '4px 12px', fontWeight: 700, fontSize: 13, display: 'inline-block', marginBottom: 12 }}>
             APEX
           </div>
           <br />
           <Tag style={{ fontSize: 11, borderRadius: 10 }}>LARGE GROUP</Tag>
         </div>
         <Menu
-          mode="inline"
-          selectedKeys={['employer']}
+          mode="inline" selectedKeys={['employer']}
           style={{ border: 'none', marginTop: 8 }}
           items={[
-            { key: 'dashboard', label: 'Dashboard',         icon: <DashboardOutlined /> },
-            { key: 'employer',  label: 'Employer Details',  icon: <InfoCircleOutlined /> },
+            { key: 'dashboard', label: 'Dashboard',        icon: <DashboardOutlined /> },
+            { key: 'employer',  label: 'Employer Details', icon: <InfoCircleOutlined /> },
             { key: 'g1', label: 'BENEFITS', type: 'group', children: [
               { key: 'plans',    label: 'Plans',    icon: <UnorderedListOutlined /> },
               { key: 'carriers', label: 'Carriers', icon: <BankOutlined /> },
@@ -243,10 +255,7 @@ export default function EffectiveDatesPage({ config, onBack }) {
 
         {/* Page header */}
         <div style={{ marginBottom: 24 }}>
-          <Text
-            style={{ fontSize: 13, color: '#6b7280', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}
-            onClick={onBack}
-          >
+          <Text style={{ fontSize: 13, color: '#6b7280', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }} onClick={onBack}>
             ← {config ? 'Back to Carrier Offers' : 'All Employers'}
           </Text>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
@@ -256,28 +265,23 @@ export default function EffectiveDatesPage({ config, onBack }) {
 
         {/* Tabs */}
         <div style={{ borderBottom: '1px solid #e5e7eb', marginBottom: 32 }}>
-          <div style={{ display: 'flex', gap: 0 }}>
+          <div style={{ display: 'flex' }}>
             {tabs.map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                style={{
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  padding: '10px 24px', fontSize: 14,
-                  fontWeight: activeTab === tab.key ? 600 : 400,
-                  color: activeTab === tab.key ? '#111827' : '#6b7280',
-                  borderBottom: activeTab === tab.key ? '2px solid #1a2332' : '2px solid transparent',
-                  marginBottom: -1,
-                  transition: 'all 0.15s',
-                }}
-              >
+              <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                padding: '10px 24px', fontSize: 14,
+                fontWeight: activeTab === tab.key ? 600 : 400,
+                color: activeTab === tab.key ? '#111827' : '#6b7280',
+                borderBottom: activeTab === tab.key ? '2px solid #1a2332' : '2px solid transparent',
+                marginBottom: -1, transition: 'all 0.15s',
+              }}>
                 {tab.label}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Tab content */}
+        {/* Non-active tabs placeholder */}
         {activeTab !== 'effective-dates' && (
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -290,25 +294,23 @@ export default function EffectiveDatesPage({ config, onBack }) {
 
         {activeTab === 'effective-dates' && (
           <div>
-            {/* Section description */}
+            {/* Section header */}
             <div style={{ marginBottom: 28 }}>
               <Text style={{ fontSize: 22, fontWeight: 700, color: '#111827', display: 'block', marginBottom: 6 }}>
                 Effective Dates
               </Text>
               <Text type="secondary" style={{ fontSize: 14 }}>
-                Each Line of Coverage maintains its own effective date history.
-                Dates are set independently through the renewal cycle — there is no single shared plan year closing date.
+                Each carrier maintains its own effective date history independently.
+                Dates are set at the carrier level through the renewal cycle — there is no single shared plan year closing date.
               </Text>
             </div>
 
-            {/* Summary row */}
-            <div style={{
-              display: 'flex', gap: 12, marginBottom: 32, flexWrap: 'wrap',
-            }}>
+            {/* Summary pills */}
+            <div style={{ display: 'flex', gap: 12, marginBottom: 32, flexWrap: 'wrap' }}>
               {[
-                { label: 'LOCs with upcoming dates', value: config?.filter((l) => l.selected).length ?? 0, color: '#1a56db', bg: '#eff6ff' },
-                { label: 'LOCs active (no renewal)', value: config?.filter((l) => !l.selected).length ?? 3, color: '#16a34a', bg: '#f0fdf4' },
-                { label: 'Total LOCs tracked', value: 3, color: '#6b7280', bg: '#f9fafb' },
+                { label: 'Carriers with upcoming dates', value: carriersInRenewal,                       color: '#1a56db', bg: '#eff6ff' },
+                { label: 'Carriers active (no renewal)', value: totalCarriers - carriersInRenewal,        color: '#16a34a', bg: '#f0fdf4' },
+                { label: 'Total carriers tracked',       value: totalCarriers,                            color: '#6b7280', bg: '#f9fafb' },
               ].map((s) => (
                 <div key={s.label} style={{
                   background: s.bg, borderRadius: 8, padding: '12px 20px',
@@ -316,14 +318,14 @@ export default function EffectiveDatesPage({ config, onBack }) {
                   border: `1px solid ${s.color}20`,
                 }}>
                   <Text style={{ fontSize: 24, fontWeight: 700, color: s.color, lineHeight: 1 }}>{s.value}</Text>
-                  <Text style={{ fontSize: 12, color: s.color, maxWidth: 100, lineHeight: 1.4 }}>{s.label}</Text>
+                  <Text style={{ fontSize: 12, color: s.color, maxWidth: 110, lineHeight: 1.4 }}>{s.label}</Text>
                 </div>
               ))}
             </div>
 
             {/* Per-LOC sections */}
-            {['MEDICAL', 'DENTAL', 'VISION'].map((key) => (
-              <LOCSection key={key} locKey={key} config={config} />
+            {ALL_LOCS.map((loc) => (
+              <LOCSection key={loc.key} loc={loc} config={config} />
             ))}
           </div>
         )}

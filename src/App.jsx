@@ -10,41 +10,45 @@ import EffectiveDatesPage from './pages/EffectiveDatesPage'
 const { Header, Content } = Layout
 
 const SCREENS = {
-  LOC_SELECTION: 'LOC_SELECTION',
-  CONFIRMATION: 'CONFIRMATION',
-  CARRIER_OFFERS: 'CARRIER_OFFERS',
-  AFP: 'AFP',
+  LOC_SELECTION:     'LOC_SELECTION',
+  CONFIRMATION:      'CONFIRMATION',
+  CARRIER_OFFERS:    'CARRIER_OFFERS',
+  AFP:               'AFP',
   RENEWAL_DASHBOARD: 'RENEWAL_DASHBOARD',
-  EFFECTIVE_DATES: 'EFFECTIVE_DATES',
+  EFFECTIVE_DATES:   'EFFECTIVE_DATES',
 }
 
 export default function App() {
   const [screen, setScreen] = useState(
     window.location.pathname === '/effective-dates'
       ? SCREENS.EFFECTIVE_DATES
-      : SCREENS.LOC_SELECTION
+      : SCREENS.CARRIER_OFFERS
   )
   const [renewalConfig, setRenewalConfig] = useState(null)
 
-  const handleNext = (config) => {
+  // Step 1 → Step 2: carry config from LOC selection to confirmation
+  const handleConfigNext = (config) => {
     setRenewalConfig(config)
     setScreen(SCREENS.CONFIRMATION)
   }
 
+  // Step 2 confirmed → land directly on Carrier Offers
   const handleStartRenewal = () => {
     setScreen(SCREENS.CARRIER_OFFERS)
   }
 
-  const handleBack = () => {
-    setScreen(SCREENS.LOC_SELECTION)
+  // Manage Cycles → Carrier Offers (for an in-renewal LOC)
+  const handleGoToCarrierOffers = () => {
+    setScreen(SCREENS.CARRIER_OFFERS)
+  }
+
+  // Carrier Offers or anywhere → Manage Cycles hub
+  const handleGoToRenewalCycles = () => {
+    setScreen(SCREENS.RENEWAL_DASHBOARD)
   }
 
   const handleGoToAFP = () => {
     setScreen(SCREENS.AFP)
-  }
-
-  const handleGoToDashboard = () => {
-    setScreen(SCREENS.RENEWAL_DASHBOARD)
   }
 
   const handleGoToEffectiveDates = () => {
@@ -91,38 +95,41 @@ export default function App() {
           </div>
         </Header>
 
-        {/* Wizard / dashboard screens (centered layout) */}
+        {/* Wizard / dashboard screens */}
         {isWizard && (
           <Content style={{ padding: '48px 24px' }}>
             {screen === SCREENS.LOC_SELECTION && (
               <LOCSelectionPage
-                onStartRenewal={handleNext}
-                onViewDashboard={handleGoToDashboard}
+                onStartRenewal={handleConfigNext}
+                onViewDashboard={handleGoToRenewalCycles}
+                lockedConfig={renewalConfig}
+                onCancel={renewalConfig ? handleGoToRenewalCycles : null}
               />
             )}
             {screen === SCREENS.CONFIRMATION && (
               <ConfirmationPage
                 config={renewalConfig}
-                onBack={handleBack}
+                onBack={() => setScreen(SCREENS.LOC_SELECTION)}
                 onStartRenewal={handleStartRenewal}
               />
             )}
             {screen === SCREENS.RENEWAL_DASHBOARD && (
               <RenewalCyclesDashboard
                 config={renewalConfig}
-                onBack={() => setScreen(SCREENS.LOC_SELECTION)}
                 onStartRenewal={() => setScreen(SCREENS.LOC_SELECTION)}
+                onViewCarrierOffers={handleGoToCarrierOffers}
               />
             )}
           </Content>
         )}
 
-        {/* Full carrier offers page (no extra padding — has its own layout) */}
+        {/* Full carrier offers page */}
         {screen === SCREENS.CARRIER_OFFERS && (
           <CarrierOffersPage
             config={renewalConfig}
             onCompleteAFP={handleGoToAFP}
             onGoToEffectiveDates={handleGoToEffectiveDates}
+            onGoToRenewalCycles={handleGoToRenewalCycles}
           />
         )}
 
