@@ -71,16 +71,16 @@ export default function AFPPage({ config, onBack, onComplete }) {
       <div style={{ marginBottom: 28 }}>
         <Text type="secondary" style={{ fontSize: 13 }}>
           Apex Solutions Inc &nbsp;›&nbsp; Renewals &nbsp;›&nbsp;
-          <Text strong style={{ color: '#1a2332' }}>Complete AFP</Text>
+          <Text strong style={{ color: '#1a2332' }}>Finalize Plan Year</Text>
         </Text>
       </div>
 
       {/* Page header */}
       <div style={{ marginBottom: 28 }}>
-        <Title level={3} style={{ marginBottom: 6 }}>Complete AFP</Title>
+        <Title level={3} style={{ marginBottom: 6 }}>Finalize Plan Year</Title>
         <Text type="secondary" style={{ fontSize: 14 }}>
-          Select which carriers to finalize in this AFP run.
-          Any carrier left unselected will remain in renewal and can be finalized in a future AFP.
+          Select which carriers to finalize now.
+          Any carrier left unselected will remain in renewal and can be finalized later.
         </Text>
       </div>
 
@@ -105,7 +105,7 @@ export default function AFPPage({ config, onBack, onComplete }) {
               Effective Date
             </Text>
             <Text style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              AFP Action
+              Action
             </Text>
           </div>
 
@@ -164,7 +164,7 @@ export default function AFPPage({ config, onBack, onComplete }) {
                   </Text>
                 </div>
 
-                {/* AFP action tag */}
+                {/* Action tag */}
                 <div>
                   {isSelected ? (
                     <Tag icon={<CheckCircleOutlined />} color="blue" style={{ borderRadius: 10, fontSize: 11 }}>
@@ -266,7 +266,7 @@ export default function AFPPage({ config, onBack, onComplete }) {
             borderRadius: 8,
           }}
         >
-          Complete AFP
+          Finalize Plan Year
         </Button>
         <Button type="link" icon={<ArrowLeftOutlined />} onClick={onBack} style={{ color: '#6b7280', fontWeight: 500 }}>
           Back to Carrier Offers
@@ -279,7 +279,7 @@ export default function AFPPage({ config, onBack, onComplete }) {
         title={
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <CheckCircleFilled style={{ color: '#16a34a', fontSize: 16 }} />
-            <span>Confirm AFP</span>
+            <span>Confirm Finalization</span>
           </div>
         }
         onCancel={() => setConfirmModal(false)}
@@ -292,7 +292,7 @@ export default function AFPPage({ config, onBack, onComplete }) {
             onClick={() => { setConfirmModal(false); onComplete() }}
             style={{ background: agreed ? '#1a2332' : undefined, borderColor: agreed ? '#1a2332' : undefined }}
           >
-            Confirm & Complete AFP
+            Confirm & Finalize
           </Button>,
         ]}
       >
@@ -374,7 +374,7 @@ export default function AFPPage({ config, onBack, onComplete }) {
           {/* Agreement checkbox */}
           <Checkbox checked={agreed} onChange={(e) => setAgreed(e.target.checked)}>
             <Text style={{ fontSize: 13 }}>
-              I confirm the above and am ready to complete AFP for{' '}
+              I confirm the above and am ready to finalize the plan year for{' '}
               <Text strong>{finalizing.map(carrierLabel).join(' & ')}</Text>.
             </Text>
           </Checkbox>

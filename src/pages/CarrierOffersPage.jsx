@@ -185,7 +185,7 @@ export default function CarrierOffersPage({ config, onCompleteAFP, onGoToEffecti
           </div>
         )}
 
-        {/* AFP banner — only when renewal is active */}
+        {/* Renewal active banner */}
         {hasActiveRenewal && (
           <div style={{
             background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8,
@@ -196,7 +196,7 @@ export default function CarrierOffersPage({ config, onCompleteAFP, onGoToEffecti
               <CheckCircleOutlined style={{ color: '#16a34a', fontSize: 16 }} />
               <Text style={{ fontSize: 13, color: '#166534' }}>
                 <Text strong style={{ color: '#166534' }}>Renewal in progress.</Text>
-                {' '}Once offers and proposals are finalized, complete AFP to create the new plan year.
+                {' '}Once offers and proposals are finalized, create the new plan year.
               </Text>
             </div>
             <Button
@@ -204,7 +204,7 @@ export default function CarrierOffersPage({ config, onCompleteAFP, onGoToEffecti
               onClick={onCompleteAFP}
               style={{ background: '#1a2332', borderColor: '#1a2332', fontWeight: 600, flexShrink: 0 }}
             >
-              Complete AFP
+              Finalize Plan Year
             </Button>
           </div>
         )}

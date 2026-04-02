@@ -117,7 +117,7 @@ export default function ConfirmationPage({ config, onBack, onStartRenewal }) {
       <Title level={4} style={{ marginBottom: 8 }}>Current Plans</Title>
       <Text type="secondary" style={{ fontSize: 14, lineHeight: 1.7, display: 'block', marginBottom: 20 }}>
         To start the new renewal, we require current plan information for comparisons between offers.
-        LOCs not included in this renewal will have their existing plans copied as-is to the new plan year at AFP.
+        LOCs not included in this renewal will have their existing plans copied as-is to the new plan year when the renewal is finalized.
       </Text>
 
       <Alert
@@ -243,7 +243,7 @@ export default function ConfirmationPage({ config, onBack, onStartRenewal }) {
               }}>
                 <SyncOutlined style={{ color: '#9ca3af', fontSize: 14, flexShrink: 0 }} />
                 <Text style={{ fontSize: 13, color: '#6b7280', lineHeight: 1.6 }}>
-                  Not included in this renewal. Existing plans will be copied as-is to the new plan year when AFP is completed.
+                  Not included in this renewal. Existing plans will be copied as-is to the new plan year when the renewal is finalized.
                 </Text>
               </div>
             )}

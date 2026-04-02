@@ -56,7 +56,7 @@ const PREV_CYCLE = {
 const RENEWAL_STAGES = [
   { key: 'offers',    label: 'Offers',    icon: <ReloadOutlined /> },
   { key: 'proposals', label: 'Proposals', icon: <FileTextOutlined /> },
-  { key: 'afp',       label: 'AFP',       icon: <AuditOutlined /> },
+  { key: 'afp',       label: 'Finalize',  icon: <AuditOutlined /> },
   { key: 'complete',  label: 'Complete',  icon: <CheckCircleFilled /> },
 ]
 
@@ -316,7 +316,7 @@ export default function RenewalCyclesDashboard({ config, onStartRenewal, onViewC
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
                     <Text type="secondary" style={{ fontSize: 13 }}>
                       {activeRenewal
-                        ? 'No carriers in renewal for this LOC. Existing plans will be copied as-is to the new plan year when AFP is completed.'
+                        ? 'No carriers in renewal for this LOC. Existing plans will be copied as-is to the new plan year when the renewal is finalized.'
                         : 'No active renewal. Use the Start Renewal button above to begin.'}
                     </Text>
                   </div>
@@ -344,7 +344,7 @@ export default function RenewalCyclesDashboard({ config, onStartRenewal, onViewC
                           <CalendarOutlined style={{ color: '#9ca3af', fontSize: 11 }} />
                           <Text style={{ fontSize: 12, color: '#6b7280' }}>Eff. {prev.effectiveDate}</Text>
                         </div>
-                        <Text style={{ fontSize: 12, color: '#9ca3af' }}>AFP completed {prev.completedDate}</Text>
+                        <Text style={{ fontSize: 12, color: '#9ca3af' }}>Finalized {prev.completedDate}</Text>
                         <Tag icon={<CheckCircleFilled />} color="success" style={{ borderRadius: 8, fontSize: 11, marginLeft: 'auto' }}>
                           Complete
                         </Tag>

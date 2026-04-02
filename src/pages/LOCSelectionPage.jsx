@@ -7,6 +7,8 @@ import {
   BarChartOutlined, PlusOutlined, CloseOutlined,
   ShopOutlined, SafetyCertificateOutlined,
   RightOutlined, DownOutlined, CopyOutlined, LockOutlined,
+  AlertOutlined, HeartOutlined, HomeOutlined,
+  UserOutlined, TeamOutlined, ClockCircleOutlined, FieldTimeOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 
@@ -40,8 +42,14 @@ const BASE_LOCS = [
 ]
 
 const ADDITIONAL_LOCS = [
-  { key: 'WORKSITE',        label: 'Worksite',          hex: '#d97706', icon: <ShopOutlined />,              description: 'Accident, Critical Illness, Hospital Indemnity' },
-  { key: 'LIFE_DISABILITY', label: 'Life & Disability',  hex: '#dc2626', icon: <SafetyCertificateOutlined />, description: 'Basic Life, Voluntary Life, AD&D, STD, LTD' },
+  { key: 'ACCIDENT',          label: 'Accident',          hex: '#f97316', icon: <AlertOutlined />,              description: 'Worksite accident coverage' },
+  { key: 'CRITICAL_ILLNESS',  label: 'Critical Illness',  hex: '#dc2626', icon: <HeartOutlined />,              description: 'Critical illness lump-sum benefit' },
+  { key: 'HOSPITAL_INDEMNITY',label: 'Hospital Indemnity', hex: '#ec4899', icon: <HomeOutlined />,              description: 'Hospital confinement indemnity' },
+  { key: 'BASIC_LIFE',        label: 'Basic Life',         hex: '#4f46e5', icon: <UserOutlined />,              description: 'Employer-paid basic life insurance' },
+  { key: 'VOLUNTARY_LIFE',    label: 'Voluntary Life',     hex: '#7c3aed', icon: <TeamOutlined />,              description: 'Employee-elected voluntary life' },
+  { key: 'ADD',               label: 'AD&D',               hex: '#64748b', icon: <SafetyCertificateOutlined />, description: 'Accidental death & dismemberment' },
+  { key: 'STD',               label: 'STD',                hex: '#0d9488', icon: <ClockCircleOutlined />,       description: 'Short-term disability' },
+  { key: 'LTD',               label: 'LTD',                hex: '#0891b2', icon: <FieldTimeOutlined />,         description: 'Long-term disability' },
 ]
 
 const DISABLED_BEFORE = dayjs('2026-01-01')
@@ -398,7 +406,7 @@ export default function LOCSelectionPage({ onStartRenewal, onViewDashboard, lock
 
                         {/* Checkbox (or empty for locked) */}
                         <div>
-                          {!isLocked && isMulti ? (
+                          {!isLocked ? (
                             <Checkbox
                               checked={sel.selected}
                               onChange={(e) => toggleCarrier(loc.key, carrier.key, e.target.checked)}
@@ -637,7 +645,7 @@ export default function LOCSelectionPage({ onStartRenewal, onViewDashboard, lock
       {anySelected && skippedBase.length > 0 && allSelectedHaveDates && (
         <Alert style={{ marginBottom: 16, borderRadius: 8 }} type="info" showIcon
           message={`${skippedBase.map((l) => l.label).join(' & ')} ${skippedBase.length === 1 ? 'is' : 'are'} not included in this renewal`}
-          description={`Current plans remain active and will be copied to the new plan year when AFP is completed.`}
+          description={`Current plans remain active and will be copied to the new plan year when the renewal is finalized.`}
         />
       )}
 

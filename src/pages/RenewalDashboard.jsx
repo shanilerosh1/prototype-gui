@@ -123,7 +123,7 @@ export default function RenewalDashboard({ config, onBack }) {
           </div>
         ) : (
           <Text type="secondary" style={{ fontSize: 13 }}>
-            Auto-set at AFP
+            Auto-set at finalization
           </Text>
         ),
     },
@@ -142,7 +142,7 @@ export default function RenewalDashboard({ config, onBack }) {
             color="default"
             style={{ fontSize: 11, borderRadius: 4 }}
           >
-            Auto-copied at AFP
+            Auto-copied at finalization
           </Tag>
         ),
     },
@@ -282,7 +282,7 @@ export default function RenewalDashboard({ config, onBack }) {
             </Text>
           }
           description={
-            `${carried.length === 1 ? 'Its' : 'Their'} current plan year plans will be automatically copied to the new plan year when AFP is completed. ` +
+            `${carried.length === 1 ? 'Its' : 'Their'} current plan year plans will be automatically copied to the new plan year when the renewal is finalized. ` +
             `You can include ${carried.length === 1 ? 'it' : 'them'} in a future renewal cycle.`
           }
         />
