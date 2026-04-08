@@ -112,6 +112,7 @@ export default function LOCSelectionPage({ onStartRenewal, onViewDashboard, lock
   const allSelectedHaveDates =
     BASE_LOCS.every(locDates) &&
     Object.values(addedSels).every((s) => !s.selected || s.date !== null)
+  const hasAnySG    = Object.values(smallGroupMap).some((v) => v === 'yes')
   const canProceed  = anySelected && allSelectedHaveDates
   const skippedBase = BASE_LOCS.filter((loc) => !locAny(loc))
   const availableToAdd = ADDITIONAL_LOCS.filter((l) => !addedKeys.includes(l.key))
@@ -195,7 +196,7 @@ export default function LOCSelectionPage({ onStartRenewal, onViewDashboard, lock
         const s = addedSels[loc.key] ?? { selected: true, date: null }
         return { ...loc, selected: s.selected, effectiveDate: s.date, carriers: [], plan: loc.description }
       })
-    onStartRenewal([...config, ...addedConfig])
+    onStartRenewal([...config, ...addedConfig], smallGroupMap)
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
@@ -234,13 +235,25 @@ export default function LOCSelectionPage({ onStartRenewal, onViewDashboard, lock
       <div style={{ textAlign: 'center', marginBottom: 32 }}>
         <Title level={3} style={{ marginBottom: 24 }}>Start New Renewal</Title>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
+          {/* Step 1: active */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
             <div style={{ width: 22, height: 22, borderRadius: '50%', border: '3px solid #1a2332', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#1a2332' }} />
             </div>
             <Text strong style={{ fontSize: 13 }}>Select LOCs & Dates</Text>
           </div>
-          <div style={{ flex: 1, height: 2, background: '#e5e7eb', margin: '-20px 8px 0', maxWidth: 160 }} />
+          <div style={{ flex: 1, height: 2, background: '#e5e7eb', margin: '-20px 8px 0', maxWidth: hasAnySG ? 120 : 160 }} />
+          {/* Step 2: Census Upload (only if SG selected) */}
+          {hasAnySG && (
+            <>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 22, height: 22, borderRadius: '50%', border: '2px solid #d1d5db', background: '#f9fafb' }} />
+                <Text style={{ fontSize: 13, color: '#9ca3af' }}>Census Upload</Text>
+              </div>
+              <div style={{ flex: 1, height: 2, background: '#e5e7eb', margin: '-20px 8px 0', maxWidth: 120 }} />
+            </>
+          )}
+          {/* Last step: pending */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
             <div style={{ width: 22, height: 22, borderRadius: '50%', border: '2px solid #d1d5db', background: '#f9fafb' }} />
             <Text style={{ fontSize: 13, color: '#9ca3af' }}>Confirm & Start</Text>

@@ -61,7 +61,7 @@ const PREMIUM_OPTIONS = [
   { value: 'composite', label: 'Composite'                  },
 ]
 
-export default function ConfirmationPage({ config, onBack, onStartRenewal }) {
+export default function ConfirmationPage({ config, onBack, onStartRenewal, hasCensusStep = false }) {
   const [premiumTypes, setPremiumTypes] = useState({})
 
   // LOCs being started in this renewal run (for button label)
@@ -90,6 +90,7 @@ export default function ConfirmationPage({ config, onBack, onStartRenewal }) {
       <div style={{ textAlign: 'center', marginBottom: 36 }}>
         <Title level={3} style={{ marginBottom: 24 }}>Start New Renewal</Title>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {/* Step 1: done */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
             <div style={{
               width: 22, height: 22, borderRadius: '50%', background: '#1a2332',
@@ -97,9 +98,25 @@ export default function ConfirmationPage({ config, onBack, onStartRenewal }) {
             }}>
               <CheckCircleFilled style={{ color: '#fff', fontSize: 13 }} />
             </div>
-            <Text style={{ fontSize: 13, color: '#9ca3af' }}>General Info</Text>
+            <Text style={{ fontSize: 13, color: '#9ca3af' }}>Select LOCs & Dates</Text>
           </div>
-          <div style={{ flex: 1, height: 2, background: '#1a2332', margin: '-20px 8px 0', maxWidth: 160 }} />
+          <div style={{ flex: 1, height: 2, background: '#1a2332', margin: '-20px 8px 0', maxWidth: hasCensusStep ? 120 : 160 }} />
+          {/* Step 2: Census Upload (only if SG flow) */}
+          {hasCensusStep && (
+            <>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                <div style={{
+                  width: 22, height: 22, borderRadius: '50%', background: '#1a2332',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <CheckCircleFilled style={{ color: '#fff', fontSize: 13 }} />
+                </div>
+                <Text style={{ fontSize: 13, color: '#9ca3af' }}>Census Upload</Text>
+              </div>
+              <div style={{ flex: 1, height: 2, background: '#1a2332', margin: '-20px 8px 0', maxWidth: 120 }} />
+            </>
+          )}
+          {/* Last step: active */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
             <div style={{
               width: 22, height: 22, borderRadius: '50%',
@@ -108,7 +125,7 @@ export default function ConfirmationPage({ config, onBack, onStartRenewal }) {
             }}>
               <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#1a2332' }} />
             </div>
-            <Text strong style={{ fontSize: 13 }}>Current Plan Info</Text>
+            <Text strong style={{ fontSize: 13 }}>Confirm & Start</Text>
           </div>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ConfigProvider, Layout } from 'antd'
 import LOCSelectionPage from './pages/LOCSelectionPage'
+import CensusUploadPage from './pages/CensusUploadPage'
 import ConfirmationPage from './pages/ConfirmationPage'
 import CarrierOffersPage from './pages/CarrierOffersPage'
 import AFPPage from './pages/AFPPage'
@@ -11,6 +12,7 @@ const { Header, Content } = Layout
 
 const SCREENS = {
   LOC_SELECTION:     'LOC_SELECTION',
+  CENSUS_UPLOAD:     'CENSUS_UPLOAD',
   CONFIRMATION:      'CONFIRMATION',
   CARRIER_OFFERS:    'CARRIER_OFFERS',
   AFP:               'AFP',
@@ -26,11 +28,15 @@ export default function App() {
   )
   const [renewalConfig, setRenewalConfig] = useState(null)
   const [preSelectedLocKey, setPreSelectedLocKey] = useState(null)
+  const [smallGroupMap, setSmallGroupMap] = useState({})
 
-  // Step 1 → Step 2: carry config from LOC selection to confirmation
-  const handleConfigNext = (config) => {
+  // Step 1 → Step 1.5 or Step 2: carry config from LOC selection
+  const handleConfigNext = (config, sgMap) => {
     setRenewalConfig(config)
-    setScreen(SCREENS.CONFIRMATION)
+    setSmallGroupMap(sgMap || {})
+    // If any carrier is flagged small group, go to census upload step
+    const hasSmallGroup = Object.values(sgMap || {}).some((v) => v === 'yes')
+    setScreen(hasSmallGroup ? SCREENS.CENSUS_UPLOAD : SCREENS.CONFIRMATION)
   }
 
   // Step 2 confirmed → land directly on Carrier Offers
@@ -66,7 +72,7 @@ export default function App() {
     setScreen(SCREENS.CARRIER_OFFERS)
   }
 
-  const isWizard = screen === SCREENS.LOC_SELECTION || screen === SCREENS.CONFIRMATION || screen === SCREENS.RENEWAL_DASHBOARD
+  const isWizard = screen === SCREENS.LOC_SELECTION || screen === SCREENS.CENSUS_UPLOAD || screen === SCREENS.CONFIRMATION || screen === SCREENS.RENEWAL_DASHBOARD
 
   return (
     <ConfigProvider
@@ -108,10 +114,23 @@ export default function App() {
                 preSelectedLocKey={preSelectedLocKey}
               />
             )}
+            {screen === SCREENS.CENSUS_UPLOAD && (
+              <CensusUploadPage
+                config={renewalConfig}
+                smallGroupMap={smallGroupMap}
+                onNext={() => setScreen(SCREENS.CONFIRMATION)}
+                onBack={() => setScreen(SCREENS.LOC_SELECTION)}
+                onSaveProgress={() => alert('Progress saved! You can close and resume later.')}
+              />
+            )}
             {screen === SCREENS.CONFIRMATION && (
               <ConfirmationPage
                 config={renewalConfig}
-                onBack={() => setScreen(SCREENS.LOC_SELECTION)}
+                hasCensusStep={Object.values(smallGroupMap).some((v) => v === 'yes')}
+                onBack={() => {
+                  const hasSmallGroup = Object.values(smallGroupMap).some((v) => v === 'yes')
+                  setScreen(hasSmallGroup ? SCREENS.CENSUS_UPLOAD : SCREENS.LOC_SELECTION)
+                }}
                 onStartRenewal={handleStartRenewal}
               />
             )}
